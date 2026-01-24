@@ -1,0 +1,40 @@
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --text: #111111;
+  --accent: #005fcc;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}
+
+button,
+input,
+select {
+  font-size: 1rem;
+  min-height: 44px;
+}
+
+.card:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.stage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .stage-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
