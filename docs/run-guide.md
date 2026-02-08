@@ -6,16 +6,22 @@
 - `ADMIN_PASSWORD`
 - `SEED_MODE=true|false`
 
-## Server
+## Backend (Flask, beginner-friendly)
 
-- TODO: Install dependencies (Express/Fastify/etc.)
-- TODO: Wire `server/src/index.ts` to a server entry point.
+- Go to `backend/`
+- Install deps: `pip install -r requirements.txt`
+- Run: `python app.py`
 
-## Client
+## Backend (legacy Java scaffold)
 
-- TODO: Choose a framework (React/Next/Vite).
-- TODO: Wire `client/routes.ts` into the router.
+- Java scaffold lives in `backend_java/` (kept for reference).
+
+## Client (React)
+
+- Go to `client/`
+- Install deps: `npm install`
+- Run: `npm run dev`
 
 ## Seeding
 
-- TODO: Add script to call `server/seed/seedRunner.ts` with deterministic seed.
+- Flask seed is a placeholder endpoint: `POST /seed`
