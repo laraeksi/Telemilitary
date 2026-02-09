@@ -42,3 +42,35 @@ CREATE TABLE IF NOT EXISTS decisions (
   evidence_links TEXT,
   timestamp TEXT
 );
+
+CREATE TABLE IF NOT EXISTS configs (
+  config_id TEXT PRIMARY KEY,
+  label TEXT
+);
+
+CREATE TABLE IF NOT EXISTS stages (
+  stage_id INTEGER,
+  config_id TEXT,
+  card_count INTEGER,
+  timer_seconds INTEGER,
+  move_limit INTEGER,
+  mismatch_penalty_seconds INTEGER,
+  PRIMARY KEY (stage_id, config_id)
+);
+
+CREATE TABLE IF NOT EXISTS helpers (
+  stage_id INTEGER,
+  config_id TEXT,
+  helper_key TEXT,
+  cost INTEGER,
+  effect_seconds INTEGER,
+  PRIMARY KEY (stage_id, config_id, helper_key)
+);
+
+CREATE TABLE IF NOT EXISTS token_rules (
+  stage_id INTEGER,
+  config_id TEXT,
+  per_match INTEGER,
+  on_complete INTEGER,
+  PRIMARY KEY (stage_id, config_id)
+);
