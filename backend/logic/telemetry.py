@@ -81,6 +81,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
 
     required_payload_fields = {
         EventType.SESSION_START.value: ["started_at"],
+        EventType.SESSION_END.value: ["ended_at", "outcome"],
         EventType.STAGE_START.value: ["timer_seconds", "move_limit", "card_count", "token_start"],
         EventType.CARD_FLIP.value: ["card_index", "is_first_flip"],
         EventType.MATCH_SUCCESS.value: [
@@ -115,7 +116,10 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             "tokens_earned",
             "tokens_spent",
         ],
+        EventType.RETRY.value: ["reason"],
         EventType.QUIT.value: ["reason"],
+        EventType.MOVE_USED.value: ["moves_used", "moves_remaining"],
+        EventType.SETTINGS_CHANGE.value: ["setting_key", "setting_value"],
     }
 
     if event_type in required_payload_fields:
