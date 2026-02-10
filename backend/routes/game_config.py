@@ -1,3 +1,6 @@
+# routes/game_config.py
+# Designer-only routes for viewing and editing game configuration parameters
+
 from __future__ import annotations
 
 from flask import Blueprint, request
@@ -8,16 +11,21 @@ from utils.auth import require_designer
 from utils.configs import fetch_configs, get_config
 from utils.errors import error_response
 
+# Blueprint for game configuration / parameter editing
 bp = Blueprint("game_config", __name__)
 
 
 @bp.get("/api/game/configs")
 def get_game_configs():
+    # Returns all game configs (easy / balanced / hard) with their stage parameters
+    # Used by the designer dashboard and sometimes the frontend
     return {"configs": fetch_configs()}
 
 
 @bp.put("/api/game/configs/<config_id>/stages/<int:stage_id>")
 def update_stage_config(config_id: str, stage_id: int):
+    # Updates parameters for a single stage in a given config
+    # Designer-only endpoint
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -28,16 +36,23 @@ def update_stage_config(config_id: str, stage_id: int):
         return error_response("stage_id is invalid", details={"field": "stage_id"})
 
     payload = request.get_json() or {}
+
+    # Stage-level parameters
     stage_fields = {
         "card_count": payload.get("card_count"),
         "timer_seconds": payload.get("timer_seconds"),
         "move_limit": payload.get("move_limit"),
         "mismatch_penalty_seconds": payload.get("mismatch_penalty_seconds"),
     }
+
+    # Helper (power-up) costs
     helpers = payload.get("helpers") or {}
+
+    # Token reward rules
     token_rules = payload.get("token_rules") or {}
 
     with get_connection() as conn:
+        # Ensure stage exists
         existing = conn.execute(
             "SELECT 1 FROM stages WHERE config_id = ? AND stage_id = ?",
             (config_id, stage_id),
@@ -45,6 +60,7 @@ def update_stage_config(config_id: str, stage_id: int):
         if existing is None:
             return error_response("stage not found", code="NOT_FOUND", status=404)
 
+        # Update stage parameters
         conn.execute(
             """
             UPDATE stages
@@ -64,7 +80,12 @@ def update_stage_config(config_id: str, stage_id: int):
             ),
         )
 
-        helper_map = {"peek_cost": "peek", "freeze_cost": "freeze", "shuffle_cost": "shuffle"}
+        # Update helper costs if provided
+        helper_map = {
+            "peek_cost": "peek",
+            "freeze_cost": "freeze",
+            "shuffle_cost": "shuffle",
+        }
         for key, helper_key in helper_map.items():
             if key in helpers and helpers[key] is not None:
                 conn.execute(
@@ -75,6 +96,7 @@ def update_stage_config(config_id: str, stage_id: int):
                     (helpers[key], config_id, stage_id, helper_key),
                 )
 
+        # Update token rules if provided
         if "per_match" in token_rules or "on_complete" in token_rules:
             conn.execute(
                 """
@@ -83,23 +105,35 @@ def update_stage_config(config_id: str, stage_id: int):
                     on_complete = COALESCE(?, on_complete)
                 WHERE config_id = ? AND stage_id = ?
                 """,
-                (token_rules.get("per_match"), token_rules.get("on_complete"), config_id, stage_id),
+                (
+                    token_rules.get("per_match"),
+                    token_rules.get("on_complete"),
+                    config_id,
+                    stage_id,
+                ),
             )
 
+    # Return updated stage view
     updated = get_config(config_id)
     return {
         "ok": True,
         "config_id": config_id,
         "stage_id": stage_id,
-        "stage": next((s for s in (updated or {}).get("stages", []) if s["stage_id"] == stage_id), None),
+        "stage": next(
+            (s for s in (updated or {}).get("stages", []) if s["stage_id"] == stage_id),
+            None,
+        ),
     }
 
 
 @bp.put("/api/game/configs/<config_id>/stages")
 def bulk_update_stages(config_id: str):
+    # Bulk update multiple stages in a single request
+    # Useful for designer batch edits
     auth_error = require_designer()
     if auth_error:
         return auth_error
+
     if config_id not in [c.value for c in ConfigId]:
         return error_response("config_id is invalid", details={"field": "config_id"})
 
@@ -113,6 +147,7 @@ def bulk_update_stages(config_id: str):
     for stage_payload in stages:
         if not isinstance(stage_payload, dict):
             continue
+
         stage_id = stage_payload.get("stage_id")
         if not isinstance(stage_id, int) or not (1 <= stage_id <= 10):
             continue
@@ -153,7 +188,11 @@ def bulk_update_stages(config_id: str):
                 ),
             )
 
-            helper_map = {"peek_cost": "peek", "freeze_cost": "freeze", "shuffle_cost": "shuffle"}
+            helper_map = {
+                "peek_cost": "peek",
+                "freeze_cost": "freeze",
+                "shuffle_cost": "shuffle",
+            }
             for key, helper_key in helper_map.items():
                 if key in helpers and helpers[key] is not None:
                     conn.execute(
@@ -172,7 +211,12 @@ def bulk_update_stages(config_id: str):
                         on_complete = COALESCE(?, on_complete)
                     WHERE config_id = ? AND stage_id = ?
                     """,
-                    (token_rules.get("per_match"), token_rules.get("on_complete"), config_id, stage_id),
+                    (
+                        token_rules.get("per_match"),
+                        token_rules.get("on_complete"),
+                        config_id,
+                        stage_id,
+                    ),
                 )
 
         updated_stage_ids.append(stage_id)
@@ -183,14 +227,21 @@ def bulk_update_stages(config_id: str):
         stage_map = {s["stage_id"]: s for s in updated_config.get("stages", [])}
         updated_stages = [stage_map[sid] for sid in updated_stage_ids if sid in stage_map]
 
-    return {"ok": True, "config_id": config_id, "updated_stages": updated_stages}
+    return {
+        "ok": True,
+        "config_id": config_id,
+        "updated_stages": updated_stages,
+    }
 
 
 @bp.patch("/api/game/configs/<config_id>/apply")
 def apply_config_deltas(config_id: str):
+    # Applies the same parameter delta across all stages in a config
+    # Used by balancing rules (e.g. reduce timers globally)
     auth_error = require_designer()
     if auth_error:
         return auth_error
+
     if config_id not in [c.value for c in ConfigId]:
         return error_response("config_id is invalid", details={"field": "config_id"})
 
@@ -203,16 +254,25 @@ def apply_config_deltas(config_id: str):
 
     with get_connection() as conn:
         if timer_delta is not None:
-            conn.execute("UPDATE stages SET timer_seconds = timer_seconds + ? WHERE config_id = ?", (timer_delta, config_id))
+            conn.execute(
+                "UPDATE stages SET timer_seconds = timer_seconds + ? WHERE config_id = ?",
+                (timer_delta, config_id),
+            )
         if move_delta is not None:
-            conn.execute("UPDATE stages SET move_limit = move_limit + ? WHERE config_id = ?", (move_delta, config_id))
+            conn.execute(
+                "UPDATE stages SET move_limit = move_limit + ? WHERE config_id = ?",
+                (move_delta, config_id),
+            )
         if mismatch_delta is not None:
             conn.execute(
                 "UPDATE stages SET mismatch_penalty_seconds = mismatch_penalty_seconds + ? WHERE config_id = ?",
                 (mismatch_delta, config_id),
             )
         if helper_delta is not None:
-            conn.execute("UPDATE helpers SET cost = cost + ? WHERE config_id = ?", (helper_delta, config_id))
+            conn.execute(
+                "UPDATE helpers SET cost = cost + ? WHERE config_id = ?",
+                (helper_delta, config_id),
+            )
         if "per_match" in token_rules or "on_complete" in token_rules:
             conn.execute(
                 """
@@ -221,7 +281,11 @@ def apply_config_deltas(config_id: str):
                     on_complete = on_complete + COALESCE(?, 0)
                 WHERE config_id = ?
                 """,
-                (token_rules.get("per_match"), token_rules.get("on_complete"), config_id),
+                (
+                    token_rules.get("per_match"),
+                    token_rules.get("on_complete"),
+                    config_id,
+                ),
             )
 
     return {"ok": True, "config_id": config_id}

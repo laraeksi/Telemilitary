@@ -1,3 +1,6 @@
+# routes/telemetry.py
+# Routes for ingesting, validating, and exporting telemetry events
+
 from __future__ import annotations
 
 import csv
@@ -14,21 +17,29 @@ from models import EventType
 from utils.auth import require_designer
 from utils.errors import error_response
 
+# Blueprint for telemetry-related endpoints
 bp = Blueprint("telemetry", __name__)
 
 
 @bp.post("/api/events")
 def ingest_event():
+    # Ingest a single telemetry event from the frontend
+
     body = request.get_json() or {}
+
+    # Ensure each event has a unique ID
     if not body.get("event_id"):
         body["event_id"] = str(uuid.uuid4())
 
+    # Validate event structure and payload
     validation = validate_event(body)
 
+    # Normalise payload to a dictionary
     payload = body.get("payload") or {}
     if not isinstance(payload, dict):
         payload = {}
 
+    # Check for impossible sequences (e.g. stage complete without stage start)
     event_type = body.get("event_type")
     if event_type in (EventType.STAGE_COMPLETE.value, EventType.STAGE_FAIL.value):
         with get_connection() as conn:
@@ -55,6 +66,7 @@ def ingest_event():
             )
             validation["is_valid"] = False
 
+    # Store the event and any detected anomalies
     with get_connection() as conn:
         conn.execute(
             """
@@ -93,16 +105,28 @@ def ingest_event():
                 ),
             )
 
+    # Return validation result to the frontend
     response_anomalies = []
     for anomaly in validation["anomalies"]:
         detail = anomaly.get("details", {}).get("field") or anomaly.get("details")
-        response_anomalies.append({"anomaly_type": anomaly.get("anomaly_type"), "detail": detail})
+        response_anomalies.append(
+            {
+                "anomaly_type": anomaly.get("anomaly_type"),
+                "detail": detail,
+            }
+        )
 
-    return {"stored": True, "is_valid": validation["is_valid"], "anomalies": response_anomalies}, 201
+    return {
+        "stored": True,
+        "is_valid": validation["is_valid"],
+        "anomalies": response_anomalies,
+    }, 201
 
 
 @bp.get("/api/events")
 def list_events():
+    # Designer-only endpoint to query raw telemetry events
+
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -110,6 +134,8 @@ def list_events():
     filters = request.args.to_dict(flat=False)
     query = "SELECT * FROM events WHERE 1=1"
     params = []
+
+    # Apply optional filters (config, stage, session, user, event type)
     for key in ("config_id", "stage_id", "event_type", "session_id", "user_id"):
         values = request.args.getlist(key)
         if values:
@@ -127,6 +153,7 @@ def list_events():
                 payload = json.loads(row["payload"])
             except json.JSONDecodeError:
                 payload = {}
+
         events.append(
             {
                 "event_id": row["event_id"],
@@ -146,6 +173,8 @@ def list_events():
 
 @bp.get("/api/export/events.csv")
 def export_events():
+    # Designer-only CSV export of telemetry events
+
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -153,6 +182,7 @@ def export_events():
     config_id = request.args.get("config_id")
     query = "SELECT * FROM events WHERE 1=1"
     params = []
+
     if config_id:
         query += " AND config_id = ?"
         params.append(config_id)
@@ -162,7 +192,20 @@ def export_events():
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["event_id", "timestamp", "event_type", "user_id", "session_id", "stage_id", "config_id", "payload_json"])
+
+    # CSV header
+    writer.writerow(
+        [
+            "event_id",
+            "timestamp",
+            "event_type",
+            "user_id",
+            "session_id",
+            "stage_id",
+            "config_id",
+            "payload_json",
+        ]
+    )
 
     for row in rows:
         writer.writerow(

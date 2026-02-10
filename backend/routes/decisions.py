@@ -1,4 +1,6 @@
 # routes/decisions.py
+# Routes for storing and viewing designer balancing decisions
+
 from __future__ import annotations
 
 import json
@@ -6,15 +8,17 @@ import uuid
 from datetime import datetime
 
 from flask import Blueprint, request
-
 from data.db import get_connection
 from utils.auth import require_designer
 
+# Blueprint for designer decision-log endpoints
 bp = Blueprint("decisions", __name__)
 
 
 @bp.get("/api/decisions")
 def list_decisions():
+    # Designer-only endpoint to list balancing decisions
+    # Can optionally filter by config_id
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -31,13 +35,16 @@ def list_decisions():
 
     decisions = []
     for row in rows:
+        # Parse stored JSON fields safely
         change = {}
         evidence = []
+
         if row["change_json"]:
             try:
                 change = json.loads(row["change_json"])
             except json.JSONDecodeError:
                 change = {}
+
         if row["evidence_links"]:
             try:
                 evidence = json.loads(row["evidence_links"])
@@ -61,6 +68,8 @@ def list_decisions():
 
 @bp.post("/api/decisions")
 def create_decision():
+    # Designer-only endpoint to record a new balancing decision
+    # Stores what was changed and the rationale behind it
     auth_error = require_designer()
     if auth_error:
         return auth_error
