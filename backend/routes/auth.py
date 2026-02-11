@@ -1,10 +1,14 @@
-# auth.py
-# Routes related to user identity and roles (player vs designer).
-# Authentication is simplified for this project.
-
 from __future__ import annotations
+
+import uuid
+from datetime import datetime
+
 from flask import Blueprint, request
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from data.db import get_connection
 from utils.auth import get_role
+from utils.errors import error_response
 
 bp = Blueprint("auth", __name__)
 
@@ -15,38 +19,96 @@ def health():
     return {"ok": True}
 
 
+@bp.post("/api/auth/register")
+def register():
+    # Creates a new user account (stored in SQLite)
+    body = request.get_json() or {}
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+    role = (body.get("role") or "player").strip()
+
+    if not username:
+        return error_response("username is required", details={"field": "username"})
+    if not password:
+        return error_response("password is required", details={"field": "password"})
+    if role not in ("player", "designer"):
+        return error_response("role is invalid", details={"field": "role"})
+
+    user_id = f"u_{uuid.uuid4().hex[:8]}"
+    created_at = datetime.utcnow().isoformat() + "Z"
+    password_hash = generate_password_hash(password)
+
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO users (user_id, username, password_hash, role, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user_id, username, password_hash, role, created_at),
+            )
+    except Exception:
+        # Most likely UNIQUE constraint failed on username
+        return error_response("username already exists", code="CONFLICT", status=409)
+
+    return {"ok": True, "user": {"user_id": user_id, "username": username, "role": role}}, 201
+
+
 @bp.post("/api/auth/login")
 def login():
-    # Lightweight login: assigns a role based on username
+    # Validates username/password and returns user_id + role
     body = request.get_json() or {}
-    username = body.get("username", "")
-    role = "designer" if username == "designer" else "player"
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+
+    if not username:
+        return error_response("username is required", details={"field": "username"})
+    if not password:
+        return error_response("password is required", details={"field": "password"})
+
+    with get_connection() as conn:
+        user = conn.execute(
+            "SELECT user_id, username, password_hash, role FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+
+    if user is None or not check_password_hash(user["password_hash"], password):
+        return error_response("invalid credentials", code="UNAUTHORIZED", status=401)
 
     return {
         "ok": True,
-        "user": {
-            "user_id": "u_admin_1",  # pseudonymous ID
-            "role": role,
-        },
+        "user": {"user_id": user["user_id"], "username": user["username"], "role": user["role"]},
     }
 
 
 @bp.post("/api/auth/logout")
 def logout():
-    # Frontend logout hook (no server-side state to clear)
+    # Frontend logout hook (no server-side session to clear)
     return {"ok": True}
 
 
 @bp.get("/api/me")
 def me():
-    # Returns the current user's identity and role
-    role = get_role()
-    user_id = request.headers.get("X-User-Id", "u_104")
+    # Returns current user identity (best-effort):
+    # - If X-User-Id header is provided, look up role from DB
+    # - Otherwise fall back to header role logic (useful in dev)
+    user_id = request.headers.get("X-User-Id")
 
-    return {
-        "is_authenticated": True,
-        "user": {
-            "user_id": user_id,
-            "role": role,
-        },
-    }
+    if user_id:
+        with get_connection() as conn:
+            user = conn.execute(
+                "SELECT user_id, username, role FROM users WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+
+        if user is None:
+            return error_response("user not found", code="NOT_FOUND", status=404)
+
+        return {
+            "is_authenticated": True,
+            "user": {"user_id": user["user_id"], "username": user["username"], "role": user["role"]},
+        }
+
+    # Fallback for development/testing
+    role = get_role()
+    return {"is_authenticated": True, "user": {"user_id": "u_104", "role": role}}

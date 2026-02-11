@@ -1,0 +1,19 @@
+# Python virtual env
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local DB / secrets
+*.db
+.env
+.env.*
+
+# Adjust the *.db line if your team actually wants the seeded DB committed — most teams don’t; they commit schema.sql and seed code instead.
+
+# Python cache
+__pycache__/
+*.pyc
+

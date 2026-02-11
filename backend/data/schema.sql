@@ -1,3 +1,12 @@
+-- Users (for register/login)
+CREATE TABLE IF NOT EXISTS users (
+  user_id TEXT PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'player',
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS events (
   event_id TEXT PRIMARY KEY,
   session_id TEXT,
