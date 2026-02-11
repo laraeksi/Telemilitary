@@ -1,5 +1,5 @@
 // src/telemetry/client.js
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE = "";
 
 function safeGetItem(key) {
   try { return window.localStorage.getItem(key); } catch { return null; }
