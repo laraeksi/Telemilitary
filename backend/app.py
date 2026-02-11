@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from flask import Flask
+from flask_cors import CORS
 
 from config import Config
 from data.db import init_db
@@ -18,6 +19,7 @@ from routes.dev import bp as dev_bp
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     # Ensure tables exist and seed default configs.
     init_db()
