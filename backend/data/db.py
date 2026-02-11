@@ -3,6 +3,7 @@ import sqlite3
 from config import Config
 
 
+
 def get_connection():
     conn = sqlite3.connect(Config.DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -77,3 +78,5 @@ def init_db():
         with open("data/schema.sql", "r", encoding="utf-8") as file:
             conn.executescript(file.read())
         _seed_configs(conn)
+        from data.seed_telemetry import seed_telemetry_if_empty
+        seed_telemetry_if_empty(conn)
