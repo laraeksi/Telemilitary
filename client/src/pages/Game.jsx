@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { track } from "../telemetry/events";
 
 import "../styles/game.css";
 import HUD from "../components/HUD";
@@ -43,6 +44,14 @@ function Game() {
   const [status, setStatus] = useState("playing");
   const [failReason, setFailReason] = useState(null);
 
+  useEffect(() => {
+    track("stage_start", { mode: "player"});
+
+    return () => {
+      track("stage_end", { mode: "player"});
+    };
+  }, []);
+
   // Reset when stage changes
   useEffect(() => {
     setDeck(buildDeck(stage));
@@ -61,6 +70,14 @@ function Game() {
     setHintUids([]);
     setFreezeUntil(0);
     setLastSnapshot(null);
+
+    track("stage_start", 
+      { stageId: stage.stageId,
+        rows: stage.rows,
+        cols: stage.cols,
+        timeLimit: stage.timeLimit,
+        moveLimit: stage.moveLimit,
+      });
   }, [stageIndex]);
 
   const cardByUid = useMemo(() => {
@@ -88,6 +105,14 @@ function Game() {
     if (timeRemaining > 0) return;
     setStatus("lost");
     setFailReason("timeout");
+
+    track("stage_failed", { stageId: stage.stageId, 
+      reason: "timeout",
+      timeRemaining,
+      movesRemaining,
+      tokens,
+    });
+
     setLockInput(true);
     setTimerRunning(false);
   }, [timeRemaining, status]);
@@ -98,6 +123,14 @@ function Game() {
     if (movesRemaining > 0) return;
     setStatus("lost");
     setFailReason("moves");
+
+    track("stage_failed", { stageId: stage.stageId, 
+      reason: "moves",
+      timeRemaining,
+      movesRemaining,
+      tokens,
+    });
+
     setLockInput(true);
     setTimerRunning(false);
   }, [movesRemaining, status]);
@@ -110,6 +143,14 @@ function Game() {
     if (flippedUids.length >= 2) return;
 
     if (!timerRunning) setTimerRunning(true);
+
+    
+    track("card_flip", 
+      { stageId: stage.stageId, 
+        cardId: cardByUid.get(uid)?.id,
+      timeRemaining,
+      movesRemaining,});
+
     setFlippedUids((prev) => [...prev, uid]);
   }
 
@@ -150,6 +191,13 @@ function Game() {
 
       setFlippedUids([]);
       setLockInput(false);
+    
+      track(isMatch ? "match_success" : "match_fail", 
+        { stageId: stage.stageId, 
+          cardAId: a.id,
+          cardBId: b.id,
+          timeRemaining,
+          movesRemaining,});
     }, 700);
 
     return () => clearTimeout(t);
@@ -160,6 +208,12 @@ function Game() {
     if (status !== "playing") return;
     if (deck.length > 0 && matchedUids.size === deck.length) {
       setStatus("won");
+
+      track("stage_complete", { stageId: stage.stageId,
+        timeRemaining,
+        movesRemaining,
+        tokensEarned: tokens +stage.stageWinTokens,
+      });
       setLockInput(true);
       setTimerRunning(false);
       setTokens((t) => t + stage.stageWinTokens);
@@ -173,6 +227,11 @@ function Game() {
     const cost = stage.powerupCosts.peek;
     if (tokens < cost) return;
 
+    track("powerup_used", { stageId: stage.stageId,
+      powerup: "peek",
+      cost: stage.powerupCosts.peek,
+      tokensBefore: tokens,
+    });
     const unmatched = deck.filter(
       (c) => !matchedUids.has(c.uid) && !flippedUids.includes(c.uid)
     );
@@ -203,6 +262,11 @@ function Game() {
 
   const cost = stage.powerupCosts.freeze;
   if (tokens < cost) return;
+  track("powerup_used", { stageId: stage.stageId,
+    powerup: "freeze",
+    cost: stage.powerupCosts.freeze,
+    tokensBefore: tokens,
+  });
 
   setTokens((t) => t - cost);
 
@@ -216,6 +280,11 @@ function Game() {
     if (tokens < cost) return;
     if (!lastSnapshot) return;
 
+    track("powerup_used", { stageId: stage.stageId,
+      powerup: "undo",
+      cost: stage.powerupCosts.undo,
+      tokensBefore: tokens,
+    });
     setTokens((t) => t - cost);
 
     setFlippedUids([]);
@@ -227,6 +296,13 @@ function Game() {
   }
 
   function retryStage() {
+
+    track("stage_retry", { stageId: stage.stageId,
+        timeRemaining,
+        movesRemaining,
+        tokens,
+     });
+
     setDeck(buildDeck(stage));
     setFlippedUids([]);
     setMatchedUids(new Set());
@@ -255,6 +331,12 @@ function Game() {
 
   function quitToMenu() {
     navigate("/");
+
+    track("quit_to_menu", { stageId: stage.stageId,
+      timeRemaining,
+      movesRemaining,
+      tokens,
+     });
   }
 
   return (
