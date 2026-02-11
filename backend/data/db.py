@@ -32,15 +32,23 @@ def _seed_configs(conn: sqlite3.Connection):
             move_limit = move_base + stage_id
             mismatch_penalty_seconds = 3
 
+            # Derive grid shape automatically
+            # Example: 8 cards -> 2x4, 12 cards -> 3x4, etc.
+            grid_cols = 4
+            grid_rows = card_count // grid_cols
+
             conn.execute(
                 """
                 INSERT OR REPLACE INTO stages
-                (stage_id, config_id, card_count, timer_seconds, move_limit, mismatch_penalty_seconds)
-                VALUES (?, ?, ?, ?, ?, ?)
+                (stage_id, config_id, grid_rows, grid_cols,
+                card_count, timer_seconds, move_limit, mismatch_penalty_seconds)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     stage_id,
                     config_id,
+                    grid_rows,
+                    grid_cols,
                     card_count,
                     timer_seconds,
                     move_limit,

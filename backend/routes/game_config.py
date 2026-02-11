@@ -22,6 +22,17 @@ def get_game_configs():
     return {"configs": fetch_configs()}
 
 
+@bp.get("/api/game/configs/<config_id>")
+def get_single_config(config_id: str):
+    # Returns a single difficulty configuration (with all its stages) for the game frontend
+    config = get_config(config_id)
+    if not config:
+        return error_response("config not found", status=404)
+
+    return {"config": config}
+
+
+
 @bp.put("/api/game/configs/<config_id>/stages/<int:stage_id>")
 def update_stage_config(config_id: str, stage_id: int):
     # Updates parameters for a single stage in a given config

@@ -54,18 +54,23 @@ CREATE TABLE IF NOT EXISTS decisions (
 
 CREATE TABLE IF NOT EXISTS configs (
   config_id TEXT PRIMARY KEY,
-  label TEXT
+  label TEXT,
+  start_tokens INTEGER NOT NULL DEFAULT 0
 );
+
 
 CREATE TABLE IF NOT EXISTS stages (
   stage_id INTEGER,
   config_id TEXT,
+  grid_rows INTEGER NOT NULL,
+  grid_cols INTEGER NOT NULL,
   card_count INTEGER,
   timer_seconds INTEGER,
   move_limit INTEGER,
   mismatch_penalty_seconds INTEGER,
   PRIMARY KEY (stage_id, config_id)
 );
+
 
 CREATE TABLE IF NOT EXISTS helpers (
   stage_id INTEGER,
