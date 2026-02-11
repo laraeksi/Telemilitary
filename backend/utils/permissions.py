@@ -11,9 +11,6 @@ class Permissions:
     def is_designer():
         return Session.get_role() == Role.DESIGNER
     
-    @staticmethod
-    def is_maintainer():
-        return Session.get_role() == Role.MAINTAINER
     
     @staticmethod
     def deny_access():
@@ -23,4 +20,5 @@ class Permissions:
         
 
     
+
      
