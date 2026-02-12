@@ -1,5 +1,5 @@
 // src/telemetry/client.js
-import { bufferEvent, getBuffer, clearBuffer } from "./buffer";
+import { bufferStage as bufferEvent, getBuffer, clearBuffer } from "./buffer";
 
 function safeGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
