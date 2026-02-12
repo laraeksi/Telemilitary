@@ -1,4 +1,4 @@
-from logic.metrics import get_funnel_metrics
+from backend.logic.metrics import get_funnel_metrics
 
 
 def test_funnel_metrics():
