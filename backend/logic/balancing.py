@@ -143,11 +143,8 @@ def simulate_balance_change(payload):
         completes = 0
         fails = 0
         quits = 0
-        fail_events: List[Dict[str, Any]] = []
-        #added
         time_fails = 0
         move_fails = 0
-        #other fails etc
 
         for row in rows:
             event_type = row["event_type"]
@@ -164,8 +161,6 @@ def simulate_balance_change(payload):
                 completes += 1
             elif event_type == EventType.STAGE_FAIL.value:
                 fails += 1
-                fail_events.append(payload)
-
                 reason = payload.get("fail_reason")
                 if reason == "time":
                     time_fails += 1
@@ -194,24 +189,27 @@ def simulate_balance_change(payload):
 
         timer_delta = int(change.get("timer_seconds_delta") or 0)
         move_delta = int(change.get("move_limit_delta") or 0)
-        _sum_cost_deltas(change)
+        _sum_cost_deltas(change)  # not factored into the simulation, only validated.
 
-        converted = 0
-        for payload in fail_events:
-            reason = payload.get("fail_reason")
-            time_remaining = payload.get("time_remaining")
-            moves_remaining = payload.get("moves_remaining")
+        # Where each fail is changed from
+        converted_from_time = 0
+        converted_from_moves = 0
 
-            if timer_delta > 0 and time_fails > 0:
-                #every second has reduces the amount of fails by 2% (not fixed) 
-                reduction_per_second = 0.02
-                reduction_factor = min(timer_delta * reduction_per_second, 0.85) #cap the reduction at 85% of all fails
-                converted += int(time_fails * reduction_factor)
-            if move_delta > 0 and move_fails > 0:
-                #NOT based on how many pairs are still left to find. one extra move may be less valuable than an extra second
-                reduction_per_move = 0.01
-                reduction_factor = min(move_delta * reduction_per_move, 0.85)
-                converted += int(time_fails * reduction_factor)
+        if timer_delta > 0 and time_fails > 0:
+            # every extra second reduces time-based fails by ~2%, capped at 85%
+            reduction_per_second = 0.02
+            reduction_factor = min(timer_delta * reduction_per_second, 0.85)
+            converted_from_time = int(time_fails * reduction_factor)
+
+        if move_delta > 0 and move_fails > 0:
+            # each extra move reduces move-based fails by ~1%, capped at 85%
+            reduction_per_move = 0.01
+            reduction_factor = min(move_delta * reduction_per_move, 0.85)
+            converted_from_moves = int(move_fails * reduction_factor)
+
+        converted = converted_from_time + converted_from_moves
+        # never convert more failures than actually occurred.
+        converted = max(0, min(converted, fails))
 
         adjusted_fails = max(0, fails - converted)
         adjusted_completes = completes + converted
