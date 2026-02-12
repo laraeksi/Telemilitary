@@ -23,9 +23,10 @@ def _seed_configs(conn: sqlite3.Connection):
 
     for config_id, label, timer_base, move_base, helper_base in configs:
         conn.execute(
-            "INSERT OR REPLACE INTO configs (config_id, label) VALUES (?, ?)",
-            (config_id, label),
+            "INSERT OR REPLACE INTO configs (config_id, label, start_tokens) VALUES (?, ?, ?)",
+            (config_id, label, 5),
         )
+
         for stage_id in range(1, 11):
             card_count = 6 + stage_id * 2
             timer_seconds = timer_base - stage_id * 2

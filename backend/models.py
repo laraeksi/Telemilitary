@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+# Models.py is acting as structured documentation at the moment but its not affecting behaviour
 
 class ConfigId(str, Enum):
     EASY = "easy"
