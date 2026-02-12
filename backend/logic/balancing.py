@@ -144,6 +144,10 @@ def simulate_balance_change(payload):
         fails = 0
         quits = 0
         fail_events: List[Dict[str, Any]] = []
+        #added
+        time_fails = 0
+        move_fails = 0
+        #other fails etc
 
         for row in rows:
             event_type = row["event_type"]
@@ -161,6 +165,13 @@ def simulate_balance_change(payload):
             elif event_type == EventType.STAGE_FAIL.value:
                 fails += 1
                 fail_events.append(payload)
+
+                reason = payload.get("fail_reason")
+                if reason == "time":
+                    time_fails += 1
+                elif reason == "moves":
+                    move_fails += 1
+
             elif event_type == EventType.QUIT.value:
                 quits += 1
 
@@ -191,12 +202,16 @@ def simulate_balance_change(payload):
             time_remaining = payload.get("time_remaining")
             moves_remaining = payload.get("moves_remaining")
 
-            if reason == "time" and isinstance(time_remaining, (int, float)) and timer_delta:
-                if time_remaining + timer_delta >= 0:
-                    converted += 1
-            if reason == "moves" and isinstance(moves_remaining, (int, float)) and move_delta:
-                if moves_remaining + move_delta >= 0:
-                    converted += 1
+            if timer_delta > 0 and time_fails > 0:
+                #every second has reduces the amount of fails by 2% (not fixed) 
+                reduction_per_second = 0.02
+                reduction_factor = min(timer_delta * reduction_per_second, 0.85) #cap the reduction at 85% of all fails
+                converted += int(time_fails * reduction_factor)
+            if move_delta > 0 and move_fails > 0:
+                #NOT based on how many pairs are still left to find. one extra move may be less valuable than an extra second
+                reduction_per_move = 0.01
+                reduction_factor = min(move_delta * reduction_per_move, 0.85)
+                converted += int(time_fails * reduction_factor)
 
         adjusted_fails = max(0, fails - converted)
         adjusted_completes = completes + converted
