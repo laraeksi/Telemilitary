@@ -101,13 +101,17 @@ def me():
                 (user_id,),
             ).fetchone()
 
-        if user is None:
-            return error_response("user not found", code="NOT_FOUND", status=404)
-
-        return {
+        if user is not None:
+            return {
             "is_authenticated": True,
-            "user": {"user_id": user["user_id"], "username": user["username"], "role": "designer"},
+            "user": {"user_id": user["user_id"], "username": user["username"], "role": "designer" }
         }
+        else:
+            return {
+                "is_authenticated": False,
+            "user": {"user_id": user["user_id"], "username": user["username"], "role": "player" }
+            }
+                
 
     # Fallback for development/testing
     role = get_role()
