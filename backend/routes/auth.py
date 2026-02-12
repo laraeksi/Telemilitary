@@ -77,7 +77,7 @@ def login():
 
     return {
         "ok": True,
-        "user": {"user_id": user["user_id"], "username": user["username"], "role": user["role"]},
+        "user": {"user_id": user["user_id"], "username": user["username"], "role": "designer"},
     }
 
 
