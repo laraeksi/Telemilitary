@@ -1,6 +1,6 @@
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { track } from "../telemetry/events";
+import { endSession, startSession, trackEvent } from "../telemetry/events";
 
 import "../styles/game.css";
 import HUD from "../components/HUD";
@@ -28,6 +28,8 @@ function Game() {
   const [timeRemaining, setTimeRemaining] = useState(stage.timeLimit);
   const [movesRemaining, setMovesRemaining] = useState(stage.moveLimit);
   const [tokens, setTokens] = useState(stage.startTokens);
+  const [tokensEarned, setTokensEarned] = useState(0);
+  const [tokensSpent, setTokensSpent] = useState(0);
 
   // timer runs only after first flip
   const [timerRunning, setTimerRunning] = useState(false);
@@ -45,11 +47,7 @@ function Game() {
   const [failReason, setFailReason] = useState(null);
 
   useEffect(() => {
-    track("stage_start", { mode: "player"});
-
-    return () => {
-      track("stage_end", { mode: "player"});
-    };
+    startSession("balanced");
   }, []);
 
   // Reset when stage changes
@@ -61,6 +59,9 @@ function Game() {
 
     setTimeRemaining(stage.timeLimit);
     setMovesRemaining(stage.moveLimit);
+    setTokens(stage.startTokens);
+    setTokensEarned(0);
+    setTokensSpent(0);
 
     setStatus("playing");
     setFailReason(null);
@@ -71,13 +72,13 @@ function Game() {
     setFreezeUntil(0);
     setLastSnapshot(null);
 
-    track("stage_start", 
-      { stageId: stage.stageId,
-        rows: stage.rows,
-        cols: stage.cols,
-        timeLimit: stage.timeLimit,
-        moveLimit: stage.moveLimit,
-      });
+    trackEvent("stage_start", {
+      stageId: stage.stageId,
+      timer_seconds: stage.timeLimit,
+      move_limit: stage.moveLimit,
+      card_count: stage.rows * stage.cols,
+      token_start: stage.startTokens,
+    });
   }, [stageIndex]);
 
   const cardByUid = useMemo(() => {
@@ -104,13 +105,15 @@ function Game() {
     if (status !== "playing") return;
     if (timeRemaining > 0) return;
     setStatus("lost");
-    setFailReason("timeout");
+    setFailReason("time");
 
-    track("stage_failed", { stageId: stage.stageId, 
-      reason: "timeout",
-      timeRemaining,
-      movesRemaining,
-      tokens,
+    trackEvent("stage_fail", {
+      stageId: stage.stageId,
+      fail_reason: "time",
+      time_remaining: timeRemaining,
+      moves_remaining: movesRemaining,
+      tokens_earned: tokensEarned,
+      tokens_spent: tokensSpent,
     });
 
     setLockInput(true);
@@ -124,11 +127,13 @@ function Game() {
     setStatus("lost");
     setFailReason("moves");
 
-    track("stage_failed", { stageId: stage.stageId, 
-      reason: "moves",
-      timeRemaining,
-      movesRemaining,
-      tokens,
+    trackEvent("stage_fail", {
+      stageId: stage.stageId,
+      fail_reason: "moves",
+      time_remaining: timeRemaining,
+      moves_remaining: movesRemaining,
+      tokens_earned: tokensEarned,
+      tokens_spent: tokensSpent,
     });
 
     setLockInput(true);
@@ -145,11 +150,12 @@ function Game() {
     if (!timerRunning) setTimerRunning(true);
 
     
-    track("card_flip", 
-      { stageId: stage.stageId, 
-        cardId: cardByUid.get(uid)?.id,
-      timeRemaining,
-      movesRemaining,});
+    const cardIndex = deck.findIndex((card) => card.uid === uid);
+    trackEvent("card_flip", {
+      stageId: stage.stageId,
+      card_index: cardIndex,
+      is_first_flip: flippedUids.length === 0,
+    });
 
     setFlippedUids((prev) => [...prev, uid]);
   }
@@ -174,7 +180,8 @@ function Game() {
     const isMatch = a.id === b.id;
 
     const t = setTimeout(() => {
-      setMovesRemaining((m) => Math.max(0, m - 1));
+      const nextMovesRemaining = Math.max(0, movesRemaining - 1);
+      setMovesRemaining(nextMovesRemaining);
 
       if (isMatch) {
         setMatchedUids((prev) => {
@@ -192,12 +199,21 @@ function Game() {
       setFlippedUids([]);
       setLockInput(false);
     
-      track(isMatch ? "match_success" : "match_fail", 
-        { stageId: stage.stageId, 
-          cardAId: a.id,
-          cardBId: b.id,
-          timeRemaining,
-          movesRemaining,});
+      trackEvent(isMatch ? "match_success" : "match_fail", {
+        stageId: stage.stageId,
+        cards: [a.id, b.id],
+        penalty_seconds: isMatch ? 0 : stage.penaltyMismatchTime,
+        moves_used: stage.moveLimit - nextMovesRemaining,
+        moves_remaining: nextMovesRemaining,
+        time_remaining: timeRemaining,
+        tokens_after: tokens,
+      });
+
+      trackEvent("move_used", {
+        stageId: stage.stageId,
+        moves_used: stage.moveLimit - nextMovesRemaining,
+        moves_remaining: nextMovesRemaining,
+      });
     }, 700);
 
     return () => clearTimeout(t);
@@ -208,12 +224,24 @@ function Game() {
     if (status !== "playing") return;
     if (deck.length > 0 && matchedUids.size === deck.length) {
       setStatus("won");
+      const updatedTokensEarned = tokensEarned + stage.stageWinTokens;
 
-      track("stage_complete", { stageId: stage.stageId,
-        timeRemaining,
-        movesRemaining,
-        tokensEarned: tokens +stage.stageWinTokens,
+      trackEvent("stage_complete", {
+        stageId: stage.stageId,
+        time_remaining: timeRemaining,
+        moves_remaining: movesRemaining,
+        total_moves_used: stage.moveLimit - movesRemaining,
+        tokens_earned: updatedTokensEarned,
+        tokens_spent: tokensSpent,
       });
+
+      trackEvent("resource_gain", {
+        stageId: stage.stageId,
+        amount: stage.stageWinTokens,
+        reason: "stage_complete",
+      });
+
+      setTokensEarned(updatedTokensEarned);
       setLockInput(true);
       setTimerRunning(false);
       setTokens((t) => t + stage.stageWinTokens);
@@ -227,10 +255,15 @@ function Game() {
     const cost = stage.powerupCosts.peek;
     if (tokens < cost) return;
 
-    track("powerup_used", { stageId: stage.stageId,
-      powerup: "peek",
-      cost: stage.powerupCosts.peek,
-      tokensBefore: tokens,
+    trackEvent("powerup_used", {
+      stageId: stage.stageId,
+      powerup_type: "peek",
+      effect_duration_seconds: 1,
+    });
+    trackEvent("resource_spend", {
+      stageId: stage.stageId,
+      amount: cost,
+      powerup_type: "peek",
     });
     const unmatched = deck.filter(
       (c) => !matchedUids.has(c.uid) && !flippedUids.includes(c.uid)
@@ -248,6 +281,7 @@ function Game() {
     const [a, b] = pair;
 
     setTokens((t) => t - cost);
+    setTokensSpent((spent) => spent + cost);
     setHintUids([a.uid, b.uid]);
     setPeekActive(true);
 
@@ -262,13 +296,19 @@ function Game() {
 
   const cost = stage.powerupCosts.freeze;
   if (tokens < cost) return;
-  track("powerup_used", { stageId: stage.stageId,
-    powerup: "freeze",
-    cost: stage.powerupCosts.freeze,
-    tokensBefore: tokens,
+  trackEvent("powerup_used", {
+    stageId: stage.stageId,
+    powerup_type: "freeze",
+    effect_duration_seconds: 5,
+  });
+  trackEvent("resource_spend", {
+    stageId: stage.stageId,
+    amount: cost,
+    powerup_type: "freeze",
   });
 
   setTokens((t) => t - cost);
+  setTokensSpent((spent) => spent + cost);
 
   const FREEZE_DURATION_MS = 5000; //  5 seconds
   setFreezeUntil(Date.now() + FREEZE_DURATION_MS);
@@ -280,12 +320,18 @@ function Game() {
     if (tokens < cost) return;
     if (!lastSnapshot) return;
 
-    track("powerup_used", { stageId: stage.stageId,
-      powerup: "undo",
-      cost: stage.powerupCosts.undo,
-      tokensBefore: tokens,
+    trackEvent("powerup_used", {
+      stageId: stage.stageId,
+      powerup_type: "undo",
+      effect_duration_seconds: 0,
+    });
+    trackEvent("resource_spend", {
+      stageId: stage.stageId,
+      amount: cost,
+      powerup_type: "undo",
     });
     setTokens((t) => t - cost);
+    setTokensSpent((spent) => spent + cost);
 
     setFlippedUids([]);
     setMatchedUids(new Set(lastSnapshot.matchedUids));
@@ -297,11 +343,10 @@ function Game() {
 
   function retryStage() {
 
-    track("stage_retry", { stageId: stage.stageId,
-        timeRemaining,
-        movesRemaining,
-        tokens,
-     });
+    trackEvent("retry", {
+      stageId: stage.stageId,
+      reason: "manual_retry",
+    });
 
     setDeck(buildDeck(stage));
     setFlippedUids([]);
@@ -310,6 +355,9 @@ function Game() {
 
     setTimeRemaining(stage.timeLimit);
     setMovesRemaining(stage.moveLimit);
+    setTokens(stage.startTokens);
+    setTokensEarned(0);
+    setTokensSpent(0);
 
     setStatus("playing");
     setFailReason(null);
@@ -325,6 +373,7 @@ function Game() {
     if (stageIndex < stages.length - 1) {
       setStageIndex((i) => i + 1);
     } else {
+      endSession("completed", stage.stageId);
       navigate("/");
     }
   }
@@ -332,11 +381,11 @@ function Game() {
   function quitToMenu() {
     navigate("/");
 
-    track("quit_to_menu", { stageId: stage.stageId,
-      timeRemaining,
-      movesRemaining,
-      tokens,
-     });
+    trackEvent("quit", {
+      stageId: stage.stageId,
+      reason: "quit_to_menu",
+    });
+    endSession("quit", stage.stageId);
   }
 
   return (
@@ -385,7 +434,7 @@ function Game() {
       {status === "lost" && (
         <Modal title="You Lost">
           <p>
-            {failReason === "timeout"
+            {failReason === "time"
               ? "You ran out of time."
               : "You ran out of moves."}
           </p>

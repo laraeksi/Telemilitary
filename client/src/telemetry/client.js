@@ -1,60 +1,76 @@
 // src/telemetry/client.js
-import { bufferStage as bufferEvent, getBuffer, clearBuffer } from "./buffer";
+const PENDING_KEY = "telemetry_pending_events_v1";
 
 function safeGet(key) {
-  try { return localStorage.getItem(key); } catch { return null; }
-}
-function safeSet(key, val) {
-  try { localStorage.setItem(key, val); } catch {}
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 }
 
-const PENDING_KEY = "telemetry_pending_batches_v1";
+function safeSet(key, val) {
+  try {
+    localStorage.setItem(key, val);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export function nowIso() {
+  return new Date().toISOString();
+}
+
+export function getOrCreateId(key, prefix) {
+  const existing = safeGet(key);
+  if (existing) return existing;
+  const value = `${prefix}_${crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`}`;
+  safeSet(key, value);
+  return value;
+}
 
 function loadPending() {
-  try { return JSON.parse(safeGet(PENDING_KEY) || "[]"); } catch { return []; }
+  try {
+    return JSON.parse(safeGet(PENDING_KEY) || "[]");
+  } catch {
+    return [];
+  }
 }
+
 function savePending(arr) {
   safeSet(PENDING_KEY, JSON.stringify(arr));
 }
 
-// record every event (no network)
-export function emitEvent(evt) {
-  bufferEvent(evt);
+async function postEvent(evt) {
+  const res = await fetch("/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(evt),
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
 }
 
-// send ONE batch at stage end
-export async function flushStageBatch(meta = {}) {
-  const events = getBuffer();
-  if (!events.length) return;
-
-  // store pending first so nothing is lost
+export async function emitEvent(evt) {
   const pending = loadPending();
-  pending.push({ meta, events, createdAt: new Date().toISOString() });
+  pending.push({ evt, createdAt: nowIso() });
   savePending(pending);
 
-  // clear RAM buffer (stage ended)
-  clearBuffer();
-
-  // try upload pending batches
-  await flushPendingBatches();
+  await flushPendingEvents();
 }
 
-export async function flushPendingBatches() {
+export async function flushPendingEvents() {
   const pending = loadPending();
   if (!pending.length) return;
 
   const remaining = [];
-  for (const batch of pending) {
+  for (const item of pending) {
     try {
-      const res = await fetch("/api/events/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(batch),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await postEvent(item.evt);
     } catch {
-      remaining.push(batch);
-      break; // backend down: stop spamming
+      remaining.push(item);
+      break;
     }
   }
 

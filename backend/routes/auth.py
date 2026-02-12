@@ -97,7 +97,7 @@ def me():
     if user_id:
         with get_connection() as conn:
             user = conn.execute(
-                "SELECT user_id, username, FROM designers WHERE user_id = ?",
+                "SELECT user_id, username FROM designers WHERE user_id = ?",
                 (user_id,),
             ).fetchone()
 

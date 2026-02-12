@@ -104,6 +104,97 @@ def seed_telemetry(conn):
             ),
         )
 
+        # Example flips + matches for stage 1
+        insert_event(
+            conn,
+            build_event(
+                f"{session_id}_stg1_flip1",
+                session_id,
+                user_id,
+                started_at + timedelta(seconds=8),
+                1,
+                config_id,
+                EventType.CARD_FLIP.value,
+                {"card_index": 0, "is_first_flip": True},
+            ),
+        )
+
+        insert_event(
+            conn,
+            build_event(
+                f"{session_id}_stg1_flip2",
+                session_id,
+                user_id,
+                started_at + timedelta(seconds=10),
+                1,
+                config_id,
+                EventType.CARD_FLIP.value,
+                {"card_index": 1, "is_first_flip": False},
+            ),
+        )
+
+        insert_event(
+            conn,
+            build_event(
+                f"{session_id}_stg1_match_success",
+                session_id,
+                user_id,
+                started_at + timedelta(seconds=12),
+                1,
+                config_id,
+                EventType.MATCH_SUCCESS.value,
+                {
+                    "cards": [0, 1],
+                    "moves_used": 1,
+                    "moves_remaining": 19,
+                    "time_remaining": 55,
+                    "tokens_after": 10,
+                },
+            ),
+        )
+
+        insert_event(
+            conn,
+            build_event(
+                f"{session_id}_stg1_move_used",
+                session_id,
+                user_id,
+                started_at + timedelta(seconds=12),
+                1,
+                config_id,
+                EventType.MOVE_USED.value,
+                {"moves_used": 1, "moves_remaining": 19},
+            ),
+        )
+
+        # Example resource spend + powerup usage for stage 1
+        insert_event(
+            conn,
+            build_event(
+                f"{session_id}_stg1_powerup_peek",
+                session_id,
+                user_id,
+                started_at + timedelta(seconds=20),
+                1,
+                config_id,
+                EventType.POWERUP_USED.value,
+                {"powerup_type": "peek", "effect_duration_seconds": 1},
+            ),
+        )
+        insert_event(
+            conn,
+            build_event(
+                f"{session_id}_stg1_spend_peek",
+                session_id,
+                user_id,
+                started_at + timedelta(seconds=20),
+                1,
+                config_id,
+                EventType.RESOURCE_SPEND.value,
+                {"amount": 2, "powerup_type": "peek"},
+            ),
+        )
+
         # Stage 1 completes
         insert_event(
             conn,
@@ -122,6 +213,20 @@ def seed_telemetry(conn):
                     "tokens_earned": 2,
                     "tokens_spent": 0,
                 },
+            ),
+        )
+
+        insert_event(
+            conn,
+            build_event(
+                f"{session_id}_stg1_reward",
+                session_id,
+                user_id,
+                started_at + timedelta(seconds=61),
+                1,
+                config_id,
+                EventType.RESOURCE_GAIN.value,
+                {"amount": 2, "reason": "stage_complete"},
             ),
         )
 

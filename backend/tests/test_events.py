@@ -92,4 +92,28 @@ def test_incorrect_fail_reason():
         for a in invalid_fail_reason_anomalies
     )
 
+
+def test_invalid_event_type_is_flagged():
+    event = make_valid_stage_start()
+    event["event_type"] = "made_up_event"
+    result = validate_event(event)
+    assert result["is_valid"] is False
+    assert any(
+        a["anomaly_type"] == "unknown" and a["detected_by"] == "event_type_check"
+        for a in result["anomalies"]
+    )
+
+
+def test_missing_payload_fields_for_stage_start():
+    event = make_valid_stage_start()
+    event["payload"].pop("timer_seconds")
+    result = validate_event(event)
+    assert result["is_valid"] is False
+    assert any(
+        a["anomaly_type"] == "missing_field"
+        and a["detected_by"] == "payload_required_field_check"
+        and a["details"].get("field") == "timer_seconds"
+        for a in result["anomalies"]
+    )
+
     

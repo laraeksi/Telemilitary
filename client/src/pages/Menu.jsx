@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { track } from "../telemetry/events";
 
 function Menu() {
   return (
@@ -8,11 +7,11 @@ function Menu() {
       <p style={{ marginTop: 0, opacity: 0.7 }}>Choose your role to continue</p>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
-        <Link to="/game" onClick={() => track("role_select", { role: "player" })}>
+        <Link to="/game">
           <button type="button">Player</button>
         </Link>
 
-        <Link to="/designer" onClick={() => track("role_select", { role: "designer" })}>
+        <Link to="/designer">
           <button type="button">Designer</button>
         </Link>
       </div>

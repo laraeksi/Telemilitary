@@ -1,36 +1,26 @@
-# Test Plan (Scaffold)
+# Test Plan (CW1)
 
-## Manual end-to-end scenarios
+## Manual end-to-end scenario (CW1 minimum)
+Scenario: Play Stage 1 and view the dashboard funnel.
 
-1. Complete stage with no helpers.
-2. Fail by time.
-3. Fail by moves.
-4. Use peek helper.
-5. Use freeze helper.
-6. Use shuffle helper.
-7. Quit mid-stage.
-8. Designer views funnel dashboard.
-9. Run balancing simulation.
-10. Export CSV.
+Steps:
+1. Start backend (`python app.py`) and client (`npm run dev`).
+2. Open the game, complete Stage 1.
+3. Quit to menu.
+4. Open the designer dashboard.
+5. Verify the funnel metrics are visible.
 
-## Automated tests (placeholders)
+Expected results:
+- Stage 1 completion is recorded.
+- Dashboard loads without errors.
 
-- event validation required fields
-- event validation allowed event types
-- anomaly creation on missing fields
-- anomaly creation on impossible order
-- anomaly creation on out-of-range data
-- funnel metrics aggregation
-- stage stats aggregation
-- progression metrics aggregation
-- fairness metrics aggregation
-- compare metrics aggregation
-- balancing rule: high fail/high time
-- balancing rule: moves dominate
-- balancing rule: token spend too high
-- balancing rule: fairness gap
-- balancing rule: high retries
-- balancing rule: drop-off spike
-- simulation: time overrun becomes success
-- simulation: moves overrun becomes success
-- CSV export formatting
+Evidence:
+- Record screenshots and add to `testing_evidence.pdf`.
+
+## Automated tests
+Run from `backend/`:
+- `pytest`
+
+Current automated coverage:
+- telemetry validation (missing fields, invalid event types, invalid fail reason)
+- metrics aggregation for stage events
