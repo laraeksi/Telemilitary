@@ -1,4 +1,4 @@
-from backend.logic.telemetry import validate_event
+from logic.telemetry import validate_event
 
 def make_valid_stage_start():
     """
