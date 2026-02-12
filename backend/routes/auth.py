@@ -107,9 +107,10 @@ def me():
             "user": {"user_id": user["user_id"], "username": user["username"], "role": "designer" }
         }
         else:
+            generated_id = f"u_{uuid.uuid4().hex[:8]}"
             return {
                 "is_authenticated": False,
-            "user": {"user_id": user["user_id"], "username": user["username"], "role": "player" }
+            "user": {"user_id": generated_id, "username": None, "role": "player" }
             }
                 
 
