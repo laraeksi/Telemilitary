@@ -68,7 +68,7 @@ def login():
 
     with get_connection() as conn:
         user = conn.execute(
-            "SELECT user_id, username, password_hash, role FROM users WHERE username = ?",
+            "SELECT user_id, username, password_hash FROM designers WHERE username = ?",
             (username,),
         ).fetchone()
 
