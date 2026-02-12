@@ -3,11 +3,30 @@ import sqlite3
 from config import Config
 
 
-
 def get_connection():
     conn = sqlite3.connect(Config.DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def pick_grid(target_cards: int):
+    """
+    Pick (rows, cols, cards) for a pairs memory game.
+    - cards must be even
+    - prefer cols 6, then 5, then 4 (nice layouts)
+    - if target_cards doesn't factor nicely, bump up by 2 until it does
+    """
+    cards = target_cards
+    # ensure even
+    if cards % 2 != 0:
+        cards += 1
+
+    while True:
+        for cols in (6, 5, 4):
+            if cards % cols == 0:
+                rows = cards // cols
+                return rows, cols, cards
+        cards += 2
 
 
 def _seed_configs(conn: sqlite3.Connection):
@@ -28,15 +47,21 @@ def _seed_configs(conn: sqlite3.Connection):
         )
 
         for stage_id in range(1, 11):
-            card_count = 6 + stage_id * 2
+            # Target difficulty scaling (cards increase by 2 each stage),
+            # but we choose a grid that actually fits.
+            target_cards = 6 + stage_id * 2  # 8, 10, 12, 14, ...
+            grid_rows, grid_cols, card_count = pick_grid(target_cards)
+
             timer_seconds = timer_base - stage_id * 2
             move_limit = move_base + stage_id
             mismatch_penalty_seconds = 3
 
-            # Derive grid shape automatically
-            # Example: 8 cards -> 2x4, 12 cards -> 3x4, etc.
-            grid_cols = 4
-            grid_rows = card_count // grid_cols
+            # Safety: ensure invariant for pairs game
+            # (won't trigger with pick_grid, but keeps data correct if changed later)
+            if (grid_rows * grid_cols) != card_count:
+                card_count = grid_rows * grid_cols
+            if card_count % 2 != 0:
+                card_count += 1
 
             conn.execute(
                 """
@@ -88,4 +113,5 @@ def init_db():
             conn.executescript(file.read())
         _seed_configs(conn)
         from data.seed_telemetry import seed_telemetry_if_empty
+
         seed_telemetry_if_empty(conn)
