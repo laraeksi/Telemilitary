@@ -1,29 +1,47 @@
-# Python virtual env
+# ===============================
+# Python
+# ===============================
+
+# Virtual environments
 venv/
 .venv/
 
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Local DB / secrets
-*.db
-.env
-.env.*
-
-# Adjust the *.db line if your team actually wants the seeded DB committed — most teams don’t; they commit schema.sql and seed code instead.
-
-# Python cache
-__pycache__/
-*.pyc
-
-
-# Ignore local database files
+# SQLite databases
 backend/data/game.db
 *.db
 
-# Ignore Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Environment variables
+.env
+.env.*
+
+# ===============================
+# Node / Frontend
+# ===============================
+
+# Node modules
+client/node_modules/
+
+# Vite cache
+client/node_modules/.vite/
+client/.vite/
+
+# Build output
+client/dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===============================
+# OS files
+# ===============================
+
+.DS_Store
+Thumbs.db
