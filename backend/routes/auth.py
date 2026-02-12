@@ -106,7 +106,7 @@ def me():
 
         return {
             "is_authenticated": True,
-            "user": {"user_id": user["user_id"], "username": user["username"], "role": user["role"]},
+            "user": {"user_id": user["user_id"], "username": user["username"], "role": "designer"},
         }
 
     # Fallback for development/testing
