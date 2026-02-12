@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List
 
-from backend.models import ConfigId, EventType
+from models import ConfigId, EventType
 
 
 REQUIRED_FIELDS = [
