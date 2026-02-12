@@ -60,7 +60,7 @@ def _seed_configs(conn: sqlite3.Connection):
             helpers = [
                 ("peek", helper_base, 1),
                 ("freeze", helper_base + 1, 3),
-                ("shuffle", helper_base + 2, None),
+                ("undo", helper_base + 2, None),
             ]
             for helper_key, cost, effect_seconds in helpers:
                 conn.execute(
