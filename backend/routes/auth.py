@@ -42,10 +42,10 @@ def register():
         with get_connection() as conn:
             conn.execute(
                 """
-                INSERT INTO users (user_id, username, password_hash, role, created_at)
+                INSERT INTO designers (user_id, username, password_hash, created_at)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (user_id, username, password_hash, role, created_at),
+                (user_id, username, password_hash, created_at),
             )
     except Exception:
         # Most likely UNIQUE constraint failed on username
@@ -97,7 +97,7 @@ def me():
     if user_id:
         with get_connection() as conn:
             user = conn.execute(
-                "SELECT user_id, username, role FROM users WHERE user_id = ?",
+                "SELECT user_id, username, FROM designers WHERE user_id = ?",
                 (user_id,),
             ).fetchone()
 
