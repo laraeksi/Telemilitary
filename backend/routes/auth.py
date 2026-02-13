@@ -25,14 +25,11 @@ def register():
     body = request.get_json() or {}
     username = (body.get("username") or "").strip()
     password = body.get("password") or ""
-    role = (body.get("role") or "player").strip()
 
     if not username:
         return error_response("username is required", details={"field": "username"})
     if not password:
         return error_response("password is required", details={"field": "password"})
-    if role not in ("player", "designer"):
-        return error_response("role is invalid", details={"field": "role"})
 
     user_id = f"u_{uuid.uuid4().hex[:8]}"
     created_at = datetime.utcnow().isoformat() + "Z"
@@ -43,13 +40,13 @@ def register():
             conn.execute(
                 """
                 INSERT INTO designers (user_id, username, password_hash, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?)
                 """,
                 (user_id, username, password_hash, created_at),
             )
-    except Exception:
+    except Exception as e:
         # Most likely UNIQUE constraint failed on username
-        return error_response("username already exists", code="CONFLICT", status=409)
+        return error_response("The chosen username already exists. Please use a different one.", code="CONFLICT", status=409)
 
     return {"ok": True, "user": {"user_id": user_id, "username": username, "role": role}}, 201
 
@@ -73,7 +70,7 @@ def login():
         ).fetchone()
 
     if user is None or not check_password_hash(user["password_hash"], password):
-        return error_response("invalid credentials", code="UNAUTHORIZED", status=401)
+        return error_response("Invalid credentials. Please try again.", code="UNAUTHORIZED", status=401)
 
     return {
         "ok": True,
