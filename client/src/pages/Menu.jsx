@@ -7,7 +7,7 @@ function Menu() {
       <p style={{ marginTop: 0, opacity: 0.7 }}>Choose your role to continue</p>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
-        <Link to="/game">
+        <Link to="/difficulty">
           <button type="button">Player</button>
         </Link>
 

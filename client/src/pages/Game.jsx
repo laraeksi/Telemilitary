@@ -14,7 +14,8 @@ import { buildDeck } from "../game/deck";
 function Game() {
   const navigate = useNavigate();
 
-  const stages = DIFFICULTY_CONFIGS.balanced;
+  const configId = localStorage.getItem("config_Id") || "balanced";
+  const stages = DIFFICULTY_CONFIGS[configId] || DIFFICULTY_CONFIGS.balanced;
 
   const [stageIndex, setStageIndex] = useState(0);
   const stage = stages[stageIndex];
@@ -47,8 +48,8 @@ function Game() {
   const [failReason, setFailReason] = useState(null);
 
   useEffect(() => {
-    startSession("balanced");
-  }, []);
+    startSession(configId);
+  }, [configId]);
 
   // Reset when stage changes
   useEffect(() => {
