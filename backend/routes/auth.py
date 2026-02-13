@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+import re
 
 from flask import Blueprint, request
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,6 +12,26 @@ from utils.auth import get_role
 from utils.errors import error_response
 
 bp = Blueprint("auth", __name__)
+
+
+PASSWORD_RULES = [
+    "At least 8 characters",
+    "At least 1 uppercase letter",
+    "At least 1 lowercase letter",
+    "At least 1 number",
+]
+
+
+def validate_password(password: str) -> str | None:
+    if len(password) < 8:
+        return "Password must be at least 8 characters."
+    if not re.search(r"[A-Z]", password):
+        return "Password must include at least one uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return "Password must include at least one lowercase letter."
+    if not re.search(r"\d", password):
+        return "Password must include at least one number."
+    return None
 
 
 @bp.get("/api/health")
@@ -30,6 +51,15 @@ def register():
         return error_response("username is required", details={"field": "username"})
     if not password:
         return error_response("password is required", details={"field": "password"})
+    password_error = validate_password(password)
+    if password_error:
+        return error_response(
+            password_error,
+            details={
+                "field": "password",
+                "rules": PASSWORD_RULES,
+            },
+        )
 
     user_id = f"u_{uuid.uuid4().hex[:8]}"
     created_at = datetime.utcnow().isoformat() + "Z"
@@ -48,7 +78,10 @@ def register():
         # Most likely UNIQUE constraint failed on username
         return error_response("The chosen username already exists. Please use a different one.", code="CONFLICT", status=409)
 
-    return {"ok": True, "user": {"user_id": user_id, "username": username, "role": role}}, 201
+    return {
+        "ok": True,
+        "user": {"user_id": user_id, "username": username, "role": "designer"},
+    }, 201
 
 
 @bp.post("/api/auth/login")
