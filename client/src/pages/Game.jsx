@@ -109,7 +109,7 @@ function Game() {
         setLoading(true);
         setLoadError(null);
 
-        const configId = "balanced";
+        const configId = localStorage.getItem("config_id") || "balanced";
 
         // If you use a Vite proxy, this can be `/api/game/configs/${configId}`
         const baseUrl =
