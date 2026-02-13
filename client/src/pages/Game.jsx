@@ -50,6 +50,7 @@ function Game() {
 
   useEffect(() => {
     startSession(configId);
+    setTokens(stages[0]?.startTokens ?? stage.startTokens);
   }, [configId]);
 
   // Reset when stage changes
@@ -61,7 +62,6 @@ function Game() {
 
     setTimeRemaining(stage.timeLimit);
     setMovesRemaining(stage.moveLimit);
-    setTokens(stage.startTokens);
     setTokensEarned(0);
     setTokensSpent(0);
 
@@ -79,7 +79,7 @@ function Game() {
       timer_seconds: stage.timeLimit,
       move_limit: stage.moveLimit,
       card_count: stage.rows * stage.cols,
-      token_start: stage.startTokens,
+      token_start: tokens,
     });
   }, [stageIndex]);
 
@@ -357,7 +357,6 @@ function Game() {
 
     setTimeRemaining(stage.timeLimit);
     setMovesRemaining(stage.moveLimit);
-    setTokens(stage.startTokens);
     setTokensEarned(0);
     setTokensSpent(0);
 
