@@ -32,5 +32,5 @@ The dashboard uses a lightweight role header. From the UI:
 - Open **Dashboard**
 
 ## How to run tests
-From `backend/`:
-- `pytest`
+From `backend/` (with requirements installed):
+- `python -m pytest`

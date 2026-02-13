@@ -1,7 +1,7 @@
 # Test Plan (CW1)
 
 ## Manual end-to-end scenario (CW1 minimum)
-Scenario: Play Stage 1 and view the dashboard funnel.
+Scenario 1: Play Stage 1 and view the dashboard funnel.
 
 Steps:
 1. Start backend (`python app.py`) and client (`npm run dev`).
@@ -18,8 +18,8 @@ Evidence:
 - Record screenshots and add to `testing_evidence.pdf`.
 
 ## Automated tests
-Run from `backend/`:
-- `pytest`
+Run from `backend/` (with requirements installed):
+- `python -m pytest`
 
 Current automated coverage:
 - telemetry validation (missing fields, invalid event types, invalid fail reason)
