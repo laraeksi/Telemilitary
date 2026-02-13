@@ -52,7 +52,7 @@ def seed_telemetry(conn):
         
         total_fails = 0
         total_tokens_spent = 0
-        stages_completed = 1  # stage 1 always completes
+        stages_completed = 0
         outcome = "completed"
 
         # Insert session summary row (kept consistent with what we seed below)
@@ -209,44 +209,73 @@ def seed_telemetry(conn):
         stg1_moves_remaining = rng.randint(1, 6)
         stg1_total_moves_used = rng.randint(7, 13)
 
-        # Stage 1 completes
-        insert_event(
-            conn,
-            build_event(
-                f"{session_id}_stg1_complete",
-                session_id,
-                user_id,
-                stg1_complete_time, 
-                1,
-                config_id,
-                EventType.STAGE_COMPLETE.value,
-                {
-                    "time_remaining": stg1_time_remaining,
-                     "moves_remaining": stg1_moves_remaining,
-                     "total_moves_used": stg1_total_moves_used,
-                     "tokens_earned": 2,
-                     "tokens_spent": 0,
-                },
-            ),
-        )
+        stg1_fail_prob = {"easy": 0.08, "balanced": 0.12, "hard": 0.18}[config_id]
+        stg1_failed = rng.random() < stg1_fail_prob
 
-        insert_event(
-            conn,
-            build_event(
-                f"{session_id}_stg1_reward",
-                session_id,
-                user_id,
-                started_at + timedelta(seconds=61),
-                1,
-                config_id,
-                EventType.RESOURCE_GAIN.value,
-                {"amount": 2, "reason": "stage_complete"},
-            ),
-        )
+        if stg1_failed:
+            total_fails += 1
+            outcome = "failed"
+
+            fail_reason = "time" if rng.random() < 0.6 else "moves"
+            insert_event(
+                conn,
+                build_event(
+                    f"{session_id}_stg1_fail",
+                    session_id,
+                    user_id,
+                    started_at + timedelta(seconds=rng.randint(35, 60)),
+                    1,
+                    config_id,
+                    EventType.STAGE_FAIL.value,
+                    {
+                        "fail_reason": fail_reason,
+                        "time_remaining": -2 if fail_reason == "time" else rng.randint(1, 3),
+                        "moves_remaining": 0 if fail_reason == "moves" else rng.randint(1, 3),
+                        "tokens_earned": 0,
+                        "tokens_spent": 0,
+                    },
+                ),
+            )
+        else:
+            stages_completed += 1
+            # Stage 1 completes
+            insert_event(
+                conn,
+                build_event(
+                    f"{session_id}_stg1_complete",
+                    session_id,
+                    user_id,
+                    stg1_complete_time, 
+                    1,
+                    config_id,
+                    EventType.STAGE_COMPLETE.value,
+                    {
+                        "time_remaining": stg1_time_remaining,
+                        "moves_remaining": stg1_moves_remaining,
+                        "total_moves_used": stg1_total_moves_used,
+                        "tokens_earned": 2,
+                        "tokens_spent": 0,
+                    },
+                ),
+            )
+
+            insert_event(
+                conn,
+                build_event(
+                    f"{session_id}_stg1_reward",
+                    session_id,
+                    user_id,
+                    started_at + timedelta(seconds=61),
+                    1,
+                    config_id,
+                    EventType.RESOURCE_GAIN.value,
+                    {"amount": 2, "reason": "stage_complete"},
+                ),
+            )
 
 
-        # Only attempt stage 2 based on config probability
-        attempted_stage2 = rng.random() < attempt_stage2_prob
+        # Only attempt stage 2 if stage 1 completed, based on config probability
+        attempted_stage2 = (not stg1_failed) and (rng.random() < attempt_stage2_prob)
 
         if attempted_stage2:
             stg2_start_time = started_at + timedelta(seconds=rng.randint(65, 85))
