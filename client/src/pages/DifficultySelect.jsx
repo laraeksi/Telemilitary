@@ -5,7 +5,6 @@ export default function DifficultySelect() {
     const navigate = useNavigate();
 
     function choose(configId) {
-
         track("settings_change", { setting: "difficulty", value: configId });
 
         // backend validator expects config_id in enum: easy/balanced/hard
