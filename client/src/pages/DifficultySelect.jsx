@@ -1,19 +1,22 @@
 import { useNavigate } from "react-router-dom";
-import { track } from "../telemetry/events";
+import { trackEvent } from "../telemetry/events";
 
 export default function DifficultySelect() {
     const navigate = useNavigate();
 
     function choose(configId) {
-        track("settings_change", { setting: "difficulty", value: configId });
-
         // backend validator expects config_id in enum: easy/balanced/hard
-        localStorage.setItem("config_id", configId);
+        localStorage.setItem("telemetry_config_id_v1", configId);
 
         // start at stage 1 for telemetry defaults
         localStorage.setItem("stage_Id", "1");
 
-        navigate(`/game?config=${configId}`);
+        trackEvent("settings_change", {
+            stageId:1,
+            setting_key: "difficulty",
+            setting_value: configId
+        });
+        navigate("/game");
     }
 
     return (

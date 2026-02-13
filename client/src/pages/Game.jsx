@@ -2,19 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { endSession, startSession, trackEvent } from "../telemetry/events";
 
+import { DIFFICULTY_CONFIGS } from "../game/stages";
+import { buildDeck } from "../game/deck";
+
 import "../styles/game.css";
 import HUD from "../components/HUD";
 import Board from "../components/Board";
 import Controls from "../components/Controls";
 import Modal from "../components/Modal";
 
-import { DIFFICULTY_CONFIGS } from "../game/stages";
-import { buildDeck } from "../game/deck";
 
 function Game() {
   const navigate = useNavigate();
 
-  const configId = localStorage.getItem("config_Id") || "balanced";
+  const configId = localStorage.getItem("telemetry_config_id_v1") || "balanced";
   const stages = DIFFICULTY_CONFIGS[configId] || DIFFICULTY_CONFIGS.balanced;
 
   const [stageIndex, setStageIndex] = useState(0);
@@ -392,6 +393,7 @@ function Game() {
   return (
     <main className="game">
       <HUD
+        configId={configId}
         stageId={stage.stageId}
         timeRemaining={timeRemaining}
         movesRemaining={movesRemaining}
