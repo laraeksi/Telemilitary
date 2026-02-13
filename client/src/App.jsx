@@ -4,6 +4,7 @@ import Game from "./pages/Game";
 import DesignerLogin from "./pages/DesignerLogin";
 import Dashboard from "./pages/Dashboard";
 import DifficultySelect from "./pages/DifficultySelect";
+import Registration from "./pages/Registration";
 
 function App() {
   return (
@@ -14,9 +15,11 @@ function App() {
         <Route path="/game" element={<Game />} />
         <Route path="/designer" element={<DesignerLogin />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/register" element={<Registration />} />
       </Routes>
     </BrowserRouter>
   );
 }
+
 
 export default App;
