@@ -4,7 +4,7 @@
 - Telemetry is pseudonymous (no personal identifiers).
 - Players are informed telemetry is collected for balancing and analytics and consent to it by using this application.
 - All registered designer usernames and passwords are stored securely in a local database. Passwords are hashed and not visible to any user.
-- If a user has successfully logged in as a designer and choose to return to the menu, they will be logged out instantly and will be required to log in with their credentials again.
+- If a user has successfully logged in as a designer and chooses to return to the menu, they will be logged out instantly and will be required to log in with their credentials again.
 
 
 ## Data minimisation
