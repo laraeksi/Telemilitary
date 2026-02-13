@@ -1,8 +1,6 @@
-# utils/errors.py
-# Helper for returning consistent JSON error responses
-
 from __future__ import annotations
 from typing import Any
+from flask import jsonify
 
 
 def error_response(
@@ -14,14 +12,17 @@ def error_response(
 ):
     # Returns a standard error payload and HTTP status code
     # Used across routes for validation and permission errors
-    return (
-        {
+
+    msg = {
             "ok": False,
             "error": {
                 "code": code,
                 "message": message,
                 "details": details or {},
             },
-        },
-        status,
-    )
+        
+
+    }
+    return jsonify(msg), status
+
+
