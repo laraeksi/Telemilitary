@@ -27,15 +27,24 @@ def seed_telemetry(conn):
     rng = random.Random(20260211)  # deterministic seed
     base_time = datetime(2026, 2, 1, 12, 0, 0)
 
-    users = [f"u_{i:03d}" for i in range(1, 16)] # Pseudonymous user IDs- no real personal data
+    users = [f"u_{i:03d}" for i in range(1, 40)] # Pseudonymous user IDs- no real personal data
     configs = [ConfigId.EASY.value, ConfigId.BALANCED.value, ConfigId.HARD.value]
 
-    session_count = 30
+    session_count = 120
 
     for i in range(session_count):
         session_id = f"s_{i+1:04d}"  # Create  session IDs like s_0001, s_0002
         user_id = rng.choice(users) # Picks a user at random 
         config_id = configs[i % 3]
+        # Config-dependent behaviour (makes compare charts meaningful)
+        attempt_stage2_prob = {"easy": 0.85, "balanced": 0.70, "hard": 0.60}[config_id]
+        stage2_fail_prob    = {"easy": 0.45, "balanced": 0.50, "hard": 0.65}[config_id]
+        quit_prob           = {"easy": 0.04, "balanced": 0.06, "hard": 0.08}[config_id]
+
+        # When stage2 fails, what share are move-based fails (vs time-based)?
+        move_fail_share     = {"easy": 0.40, "balanced": 0.45, "hard": 0.50}[config_id]
+
+        
         # Create a session timeline 
         started_at = base_time + timedelta(minutes=i * 4)
         ended_at = started_at + timedelta(minutes=3)
@@ -194,6 +203,11 @@ def seed_telemetry(conn):
                 {"amount": 2, "powerup_type": "peek"},
             ),
         )
+        # Add variance to Stage 1 completion
+        stg1_complete_time = started_at + timedelta(seconds=rng.randint(45, 75))
+        stg1_time_remaining = rng.randint(2, 15)
+        stg1_moves_remaining = rng.randint(1, 6)
+        stg1_total_moves_used = rng.randint(7, 13)
 
         # Stage 1 completes
         insert_event(
@@ -202,16 +216,16 @@ def seed_telemetry(conn):
                 f"{session_id}_stg1_complete",
                 session_id,
                 user_id,
-                started_at + timedelta(seconds=60),
+                stg1_complete_time, 
                 1,
                 config_id,
                 EventType.STAGE_COMPLETE.value,
                 {
-                    "time_remaining": 5,
-                    "moves_remaining": 3,
-                    "total_moves_used": 10,
-                    "tokens_earned": 2,
-                    "tokens_spent": 0,
+                    "time_remaining": stg1_time_remaining,
+                     "moves_remaining": stg1_moves_remaining,
+                     "total_moves_used": stg1_total_moves_used,
+                     "tokens_earned": 2,
+                     "tokens_spent": 0,
                 },
             ),
         )
@@ -230,17 +244,20 @@ def seed_telemetry(conn):
             ),
         )
 
-        # Only ~60% attempt stage 2 → creates drop-off
-        attempted_stage2 = rng.random() < 0.6
+
+        # Only attempt stage 2 based on config probability
+        attempted_stage2 = rng.random() < attempt_stage2_prob
+
         if attempted_stage2:
-            # stage 2 starts
+            stg2_start_time = started_at + timedelta(seconds=rng.randint(65, 85))
+
             insert_event(
                 conn,
                 build_event(
                     f"{session_id}_stg2_start",
                     session_id,
                     user_id,
-                    started_at + timedelta(seconds=70),
+                    stg2_start_time,
                     2,
                     config_id,
                     EventType.STAGE_START.value,
@@ -253,69 +270,101 @@ def seed_telemetry(conn):
                 ),
             )
 
-            # Stage 2 harder: ~50% fail
-            stage2_failed = rng.random() < 0.5
-            if stage2_failed:
-                total_fails += 1
-                outcome = "failed"
-
+            # Quit mid-stage sometimes
+            if rng.random() < quit_prob:
                 insert_event(
                     conn,
                     build_event(
-                        f"{session_id}_stg2_fail",
+                        f"{session_id}_stg2_quit",
                         session_id,
                         user_id,
-                        started_at + timedelta(seconds=120),
+                        stg2_start_time + timedelta(seconds=rng.randint(10, 40)),
                         2,
                         config_id,
-                        EventType.STAGE_FAIL.value,
-                        {
-                            "fail_reason": "time",
-                            # Negative time_remaining for simulation- e.g. if designer increases timer, these failures may become successes
-                            "time_remaining": -3,
-                            "moves_remaining": 2,
+                        EventType.QUIT.value,
+                        {"reason": "player_left"},
+                    ),
+                )
+
+                outcome = "quit"
+            else:
+                stage2_failed = rng.random() < stage2_fail_prob
+                stg2_end_time = stg2_start_time + timedelta(seconds=rng.randint(30, 70))
+
+                if stage2_failed:
+                    is_move_fail = rng.random() < move_fail_share
+
+                    if is_move_fail:
+                        fail_payload = {
+                            "fail_reason": "moves",
+                            "time_remaining": rng.randint(1, 12),
+                            "moves_remaining": rng.choice([0, -1]),
                             "tokens_earned": 0,
                             "tokens_spent": 0,
-                        },
-                    ),
-                )
-            else:
-                stages_completed += 1
-                insert_event(
-                    conn,
-                    build_event(
-                        f"{session_id}_stg2_complete",
-                        session_id,
-                        user_id,
-                        started_at + timedelta(seconds=120),
-                        2,
-                        config_id,
-                        EventType.STAGE_COMPLETE.value,
-                        {
-                            "time_remaining": 2,
-                            "moves_remaining": 1,
-                            "total_moves_used": 14,
-                            "tokens_earned": 2,
+                        }
+                    else:
+                        fail_payload = {
+                            "fail_reason": "time",
+                            "time_remaining": rng.randint(-3, -1),
+                            "moves_remaining": rng.randint(-2, 0),
+                            "tokens_earned": 0,
                             "tokens_spent": 0,
-                        },
-                    ),
-                )
+                        }
 
-        # SESSION_END (payload MUST include ended_at + outcome)
-        insert_event(
-            conn,
-            build_event(
-                f"{session_id}_end",
-                session_id,
-                user_id,
-                ended_at,
-                1,
-                config_id,
-                EventType.SESSION_END.value,
-                {"ended_at": ended_at.isoformat() + "Z", "outcome": outcome},
-            ),
-        )
+                    insert_event(
+                        conn,
+                        build_event(
+                            f"{session_id}_stg2_fail",
+                            session_id,
+                            user_id,
+                            stg2_end_time,
+                            2,
+                            config_id,
+                            EventType.STAGE_FAIL.value,
+                            fail_payload,
+                        ),
+                    )
+                    total_fails += 1
+                    outcome = "failed"
 
+                    # Optional retry
+                    if rng.random() < 0.25:
+                        insert_event(
+                            conn,
+                            build_event(
+                                f"{session_id}_stg2_retry",
+                                session_id,
+                                user_id,
+                                stg2_end_time + timedelta(seconds=2),
+                                2,
+                                config_id,
+                                EventType.RETRY.value,
+                                {"reason": "retry_after_fail", "stage_id": 2},
+                            ),
+                        )
+
+                else:
+                    insert_event(
+                        conn,
+                        build_event(
+                            f"{session_id}_stg2_complete",
+                            session_id,
+                            user_id,
+                            stg2_end_time,
+                            2,
+                            config_id,
+                            EventType.STAGE_COMPLETE.value,
+                            {
+                                "time_remaining": rng.randint(1, 12),
+                                "moves_remaining": rng.randint(0, 4),
+                                "total_moves_used": rng.randint(10, 18),
+                                "tokens_earned": 2,
+                                "tokens_spent": 0,
+                            },
+                        ),
+                    )
+                    stages_completed = 2
+        
         # Update session summary row to reflect what actually happened (optional but good)
         conn.execute(
             """

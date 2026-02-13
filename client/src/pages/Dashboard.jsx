@@ -81,6 +81,139 @@ function LineChart({ data, height = 160, color = "#37b24d" }) {
   );
 }
 
+function FunnelTable({ stages }) {
+  if (!stages?.length) return <p>No funnel data available.</p>;
+
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <thead>
+        <tr>
+          {[
+            "Stage",
+            "Starts",
+            "Completes",
+            "Fails",
+            "Quits",
+            "Complete %",
+            "Fail %",
+            "Drop-off to next %",
+          ].map((h) => (
+            <th
+              key={h}
+              style={{
+                textAlign: "left",
+                borderBottom: "1px solid #ddd",
+                padding: "8px 6px",
+                fontSize: 13,
+              }}
+            >
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {stages.map((s) => {
+          const completePct = ((s.completion_rate || 0) * 100).toFixed(1);
+          const failPct = ((s.failure_rate || 0) * 100).toFixed(1);
+          const dropPct =
+            s.dropoff_to_next == null
+              ? "—"
+              : `${((s.dropoff_to_next || 0) * 100).toFixed(1)}%`;
+
+          return (
+            <tr key={s.stage_id}>
+              <td style={{ padding: "8px 6px" }}>{s.stage_id}</td>
+              <td style={{ padding: "8px 6px" }}>{s.starts ?? 0}</td>
+              <td style={{ padding: "8px 6px" }}>{s.completes ?? 0}</td>
+              <td style={{ padding: "8px 6px" }}>{s.fails ?? 0}</td>
+              <td style={{ padding: "8px 6px" }}>{s.quits ?? 0}</td>
+              <td style={{ padding: "8px 6px" }}>{completePct}%</td>
+              <td style={{ padding: "8px 6px" }}>{failPct}%</td>
+              <td style={{ padding: "8px 6px" }}>{dropPct}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+
+function SimulationResult({ simulation, stageId }) {
+  if (!simulation) return null;
+
+  const results = simulation.results || [];
+  if (!results.length) {
+    return <p>No simulation results returned.</p>;
+  }
+
+  const r = results.find((x) => Number(x.stage_id) === Number(stageId));
+  if (!r) return <p>No simulation result for Stage {stageId}.</p>;
+
+  const before = r.before || {};
+  const after = r.after || {};
+
+  const pct = (x) => ((x || 0) * 100);
+  const fmt = (x) => `${x.toFixed(1)}%`;
+  const delta = (a, b) => `${(b - a).toFixed(1)}%`;
+
+  const beforeC = pct(before.completion_rate);
+  const afterC = pct(after.completion_rate);
+  const beforeF = pct(before.failure_rate);
+  const afterF = pct(after.failure_rate);
+  const beforeQ = pct(before.quit_rate);
+  const afterQ = pct(after.quit_rate);
+
+  return (
+    <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+      <div style={{ display: "grid", gap: 6 }}>
+        <div>
+          <strong>Completion rate:</strong>{" "}
+          {fmt(beforeC)} → {fmt(afterC)}{" "}
+          <span style={{ opacity: 0.8 }}>
+            (Δ {delta(beforeC, afterC)})
+          </span>
+        </div>
+        <div>
+          <strong>Failure rate:</strong>{" "}
+          {fmt(beforeF)} → {fmt(afterF)}{" "}
+          <span style={{ opacity: 0.8 }}>
+            (Δ {delta(beforeF, afterF)})
+          </span>
+        </div>
+        <div>
+          <strong>Quit rate:</strong>{" "}
+          {fmt(beforeQ)} → {fmt(afterQ)}{" "}
+          <span style={{ opacity: 0.8 }}>
+            (Δ {delta(beforeQ, afterQ)})
+          </span>
+        </div>
+      </div>
+
+      {Array.isArray(r.notes) && r.notes.length > 0 ? (
+        <div style={{ marginTop: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+            Simulation notes
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {r.notes.map((n, idx) => (
+              <li key={`${idx}-${n}`}>{n}</li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, opacity: 0.8 }}>
+          No notes returned.
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+
 function Dashboard() {
   const [configId, setConfigId] = useState("balanced");
   const [funnel, setFunnel] = useState(null);
@@ -97,8 +230,14 @@ function Dashboard() {
   const [simulation, setSimulation] = useState(null);
 
   const stageOptions = useMemo(() => {
-    return Array.from({ length: 10 }, (_, i) => i + 1);
-  }, []);
+    const ids = new Set();
+  (funnel?.stages || []).forEach((s) => ids.add(s.stage_id));
+  (stageStats?.stages || []).forEach((s) => ids.add(s.stage_id));
+
+  const arr = Array.from(ids).sort((a, b) => a - b);
+  return arr.length ? arr : [1, 2];
+}, [funnel, stageStats]);
+    
 
   async function loadMetrics(selectedConfig) {
     setError("");
@@ -176,10 +315,19 @@ function Dashboard() {
     }
   }
 
-  useEffect(() => {
-    loadMetrics(configId);
-    loadSuggestions(configId);
-  }, [configId]);
+  // 1) Load metrics whenever configId changes
+useEffect(() => {
+  loadMetrics(configId);
+  loadSuggestions(configId);
+}, [configId]);
+
+// 2) Keep simStageId valid whenever stageOptions changes
+useEffect(() => {
+  const current = Number(simStageId);
+  if (!stageOptions.includes(current)) {
+    setSimStageId(stageOptions[0]);
+  }
+}, [stageOptions, simStageId]);
 
   const funnelBars =
     funnel?.stages?.map((stage) => ({
@@ -188,10 +336,13 @@ function Dashboard() {
     })) || [];
 
   const spikeBars =
-    stageStats?.stages?.map((stage) => ({
-      label: `Stage ${stage.stage_id}`,
+  stageStats?.stages?.map((stage) => {
+    const isSpike = stage.flags?.includes("difficulty_spike");
+    return {
+      label: `Stage ${stage.stage_id}${isSpike ? " ⚠" : ""}`,
       value: stage.failure_rate || 0,
-    })) || [];
+    };
+  }) || [];
 
   const progressionTime =
     progression?.stages?.map((stage) => ({
@@ -260,9 +411,12 @@ function Dashboard() {
       {error && <p style={{ color: "#b00020" }}>{error}</p>}
 
       <div style={{ display: "grid", gap: 16 }}>
-        <DataBlock title="1) Funnel View (Completion Rate by Stage)">
-          <BarChart data={funnelBars} maxValue={1} />
-        </DataBlock>
+      <DataBlock title="1) Funnel View (Starts → Completes → Drop-off)">
+        <BarChart data={funnelBars} maxValue={1} />
+        <div style={{ marginTop: 12 }}>
+          <FunnelTable stages={funnel?.stages || []} />
+        </div>
+      </DataBlock>
 
         <DataBlock title="2) Difficulty / Spike Detection (Failure Rate)">
           <BarChart data={spikeBars} maxValue={1} />
@@ -336,9 +490,7 @@ function Dashboard() {
             </label>
             <button type="submit">Run simulation</button>
           </form>
-          {simulation && (
-            <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(simulation, null, 2)}</pre>
-          )}
+          {simulation && <SimulationResult simulation={simulation} stageId={simStageId} />}
         </DataBlock>
       </section>
     </main>

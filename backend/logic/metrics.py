@@ -46,7 +46,7 @@ def _load_events(
     from_ts: Optional[str] = None,
     to_ts: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    query = "SELECT * FROM events WHERE 1=1"
+    query = "SELECT * FROM events WHERE 1=1 AND is_valid = 1"
     params: List[Any] = []
     if config_id:
         query += " AND config_id = ?"
@@ -157,6 +157,8 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
         completed = False
         failed = False
         fail_reason = None
+        fail_time_remaining = None
+        fail_moves_remaining = None
 
         for event in stage_events:
             payload = event.get("payload", {})
@@ -188,6 +190,8 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
                 elif event["event_type"] == EventType.STAGE_FAIL.value:
                     failed = True
                     fail_reason = payload.get("fail_reason") or payload.get("failReason")
+                    fail_time_remaining = _extract_number(payload, ["time_remaining", "timeRemaining"])
+                    fail_moves_remaining = _extract_number(payload, ["moves_remaining", "movesRemaining"])
                 last_start = None
 
         stats[stage_id]["tokens_earned"].append(tokens_earned)
@@ -200,6 +204,8 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
                 "completed": completed,
                 "failed": failed,
                 "fail_reason": fail_reason,
+                "fail_time_remaining": fail_time_remaining,
+                "fail_moves_remaining": fail_moves_remaining,
             }
         )
 

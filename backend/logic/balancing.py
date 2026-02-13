@@ -134,7 +134,7 @@ def simulate_balance_change(payload):
                 """
                 SELECT event_type, payload
                 FROM events
-                WHERE config_id = ? AND stage_id = ?
+                WHERE config_id = ? AND stage_id = ? AND is_valid = 1
                 """,
                 (config_id, stage_id),
             ).fetchall()
@@ -146,26 +146,41 @@ def simulate_balance_change(payload):
         time_fails = 0
         move_fails = 0
 
+        # Capture fail margins so we can replay them with deltas
+        fail_events: List[Dict[str, Any]] = []
+
+
         for row in rows:
             event_type = row["event_type"]
-            payload = {}
+            row_payload = {}
             if row["payload"]:
                 try:
-                    payload = json.loads(row["payload"])
+                    row_payload = json.loads(row["payload"])
                 except json.JSONDecodeError:
-                    payload = {}
+                    row_payload = {}
 
             if event_type == EventType.STAGE_START.value:
                 starts += 1
+
             elif event_type == EventType.STAGE_COMPLETE.value:
                 completes += 1
+
             elif event_type == EventType.STAGE_FAIL.value:
                 fails += 1
-                reason = payload.get("fail_reason")
+                reason = row_payload.get("fail_reason")
                 if reason == "time":
                     time_fails += 1
                 elif reason == "moves":
                     move_fails += 1
+
+                # Store margins for replay
+                fail_events.append(
+                    {
+                        "reason": reason,
+                        "time_remaining": row_payload.get("time_remaining"),
+                        "moves_remaining": row_payload.get("moves_remaining"),
+                    }
+                )
 
             elif event_type == EventType.QUIT.value:
                 quits += 1
@@ -191,24 +206,33 @@ def simulate_balance_change(payload):
         move_delta = int(change.get("move_limit_delta") or 0)
         _sum_cost_deltas(change)  # not factored into the simulation, only validated.
 
-        # Where each fail is changed from
+        # Replay fails using margins
+        converted = 0
         converted_from_time = 0
         converted_from_moves = 0
 
-        if timer_delta > 0 and time_fails > 0:
-            # every extra second reduces time-based fails by ~2%, capped at 85%
-            reduction_per_second = 0.02
-            reduction_factor = min(timer_delta * reduction_per_second, 0.85)
-            converted_from_time = int(time_fails * reduction_factor)
+        for fe in fail_events:
+            reason = fe.get("reason")
+            tr = fe.get("time_remaining")
+            mr = fe.get("moves_remaining")
 
-        if move_delta > 0 and move_fails > 0:
-            # each extra move reduces move-based fails by ~1%, capped at 85%
-            reduction_per_move = 0.01
-            reduction_factor = min(move_delta * reduction_per_move, 0.85)
-            converted_from_moves = int(move_fails * reduction_factor)
+            if reason == "time" and tr is not None:
+                try:
+                    if float(tr) + timer_delta >= 0:
+                        converted += 1
+                        converted_from_time += 1
+                except (TypeError, ValueError):
+                    pass
 
-        converted = converted_from_time + converted_from_moves
-        # never convert more failures than actually occurred.
+            elif reason == "moves" and mr is not None:
+                try:
+                    if float(mr) + move_delta >= 0:
+                        converted += 1
+                        converted_from_moves += 1
+                except (TypeError, ValueError):
+                    pass
+
+        # never convert more failures than actually occurred
         converted = max(0, min(converted, fails))
 
         adjusted_fails = max(0, fails - converted)
@@ -225,8 +249,10 @@ def simulate_balance_change(payload):
                 "stage_id": stage_id,
                 "before": before,
                 "after": after,
-                "notes": [f"{converted}/{fails} prior fails convert to completes."],
+                "notes": [
+                    f"{converted}/{fails} prior fails convert to completes "
+                    f"(time:{converted_from_time}, moves:{converted_from_moves})."
+                ],
             }
         )
-
     return {"config_id": config_id, "changes_applied": changes, "results": results}
