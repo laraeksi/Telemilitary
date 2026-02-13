@@ -28,54 +28,154 @@ function DataBlock({ title, children }) {
   );
 }
 
-function BarChart({ data, maxValue, height = 140 }) {
+const formatPercent = (value) => `${(value * 100).toFixed(1)}%`;
+const formatSeconds = (value) => `${value.toFixed(1)}s`;
+const formatTokens = (value) => `${value.toFixed(1)} tokens`;
+
+function BarChart({ data, height = 18, valueFormatter }) {
   if (!data?.length) return <p>No data yet.</p>;
-  const max = maxValue || Math.max(...data.map((d) => d.value), 1);
+
+  const values = data.map((d) => d.value);
+  const minValue = Math.min(...values, 0);
+  const maxValue = Math.max(...values, 0, 1);
+  const range = maxValue - minValue || 1;
+
+  const formatValue =
+    valueFormatter ||
+    ((value) => {
+      if (maxValue <= 1 && minValue >= 0) {
+        return `${(value * 100).toFixed(1)}%`;
+      }
+      return value.toFixed(2);
+    });
+
+  const ticks = [minValue, 0, maxValue];
+  const tickLabels = ticks.map((tick) => formatValue(tick));
+  const tickPositions = ticks.map((tick) => ((tick - minValue) / range) * 100);
+
   return (
-    <div style={{ display: "grid", gap: 8 }}>
-      {data.map((item) => (
-        <div key={item.label} style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 12 }}>{item.label}</div>
-          <div style={{ background: "#f2f2f2", height, borderRadius: 6, position: "relative" }}>
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                bottom: 0,
-                width: "100%",
-                height: `${Math.max((item.value / max) * 100, 2)}%`,
-                background: "#4f7cff",
-                borderRadius: 6,
-              }}
-            />
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>{item.value.toFixed(2)}</div>
+    <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ position: "relative", height: 18 }}>
+        {tickPositions.map((pos, idx) => (
+          <div
+            key={`${pos}-${idx}`}
+            style={{
+              position: "absolute",
+              left: `${pos}%`,
+              top: 0,
+              height: "100%",
+              width: 1,
+              background: idx === 1 ? "#a0a0a0" : "#d8d8d8",
+            }}
+          />
+        ))}
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, opacity: 0.7 }}>
+          <span>{tickLabels[0]}</span>
+          <span>{tickLabels[1]}</span>
+          <span>{tickLabels[2]}</span>
         </div>
-      ))}
+      </div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {data.map((item) => {
+          const start = ((Math.min(item.value, 0) - minValue) / range) * 100;
+          const end = ((Math.max(item.value, 0) - minValue) / range) * 100;
+          const left = Math.min(start, end);
+          const width = Math.max(Math.abs(end - start), 2);
+          const isNegative = item.value < 0;
+
+          return (
+            <div
+              key={item.label}
+              style={{ display: "grid", gridTemplateColumns: "160px 1fr 80px", gap: 10, alignItems: "center" }}
+            >
+              <div style={{ fontSize: 12 }}>{item.label}</div>
+              <div style={{ background: "#f5f5f5", height, borderRadius: 8, position: "relative" }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `${left}%`,
+                    top: 0,
+                    height: "100%",
+                    width: `${width}%`,
+                    background: isNegative ? "#ff6b6b" : "#4f7cff",
+                    borderRadius: 8,
+                  }}
+                  title={`${item.label}: ${formatValue(item.value)}`}
+                />
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.8, textAlign: "right" }}>
+                {formatValue(item.value)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function LineChart({ data, height = 160, color = "#37b24d" }) {
+function LineChart({ data, height = 180, color = "#37b24d", valueFormatter }) {
   if (!data?.length) return <p>No data yet.</p>;
-  const padding = 24;
-  const width = 500;
-  const maxValue = Math.max(...data.map((d) => d.value), 1);
+  const padding = 36;
+  const width = 560;
+  const values = data.map((d) => d.value);
+  const minValue = Math.min(...values, 0);
+  const maxValue = Math.max(...values, 1);
+  const range = maxValue - minValue || 1;
+
+  const formatValue =
+    valueFormatter ||
+    ((value) => {
+      if (maxValue <= 1 && minValue >= 0) {
+        return `${(value * 100).toFixed(1)}%`;
+      }
+      return value.toFixed(2);
+    });
+
   const points = data
     .map((d, index) => {
       const x = padding + (index / (data.length - 1 || 1)) * (width - padding * 2);
-      const y = height - padding - (d.value / maxValue) * (height - padding * 2);
+      const y = height - padding - ((d.value - minValue) / range) * (height - padding * 2);
       return `${x},${y}`;
     })
     .join(" ");
 
+  const tickCount = 4;
+  const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => minValue + (range * i) / tickCount);
+
   return (
     <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
+      {yTicks.map((tick, idx) => {
+        const y = height - padding - ((tick - minValue) / range) * (height - padding * 2);
+        return (
+          <g key={`y-${idx}`}>
+            <line x1={padding} x2={width - padding} y1={y} y2={y} stroke="#e6e6e6" />
+            <text x={4} y={y + 4} fontSize="10" fill="#6b6b6b">
+              {formatValue(tick)}
+            </text>
+          </g>
+        );
+      })}
+
       <polyline points={points} fill="none" stroke={color} strokeWidth="3" />
       {data.map((d, index) => {
         const x = padding + (index / (data.length - 1 || 1)) * (width - padding * 2);
-        const y = height - padding - (d.value / maxValue) * (height - padding * 2);
-        return <circle key={d.label} cx={x} cy={y} r="4" fill={color} />;
+        const y = height - padding - ((d.value - minValue) / range) * (height - padding * 2);
+        const showLabel = data.length <= 8 || index % 2 === 0;
+        return (
+          <g key={d.label}>
+            <circle cx={x} cy={y} r="4" fill={color}>
+              <title>
+                {d.label}: {formatValue(d.value)}
+              </title>
+            </circle>
+            {showLabel && (
+              <text x={x} y={height - 12} fontSize="10" fill="#6b6b6b" textAnchor="middle">
+                {d.label}
+              </text>
+            )}
+          </g>
+        );
       })}
     </svg>
   );
@@ -228,6 +328,11 @@ function Dashboard() {
   const [timerDelta, setTimerDelta] = useState(5);
   const [moveDelta, setMoveDelta] = useState(0);
   const [simulation, setSimulation] = useState(null);
+  const [decisionStageId, setDecisionStageId] = useState(1);
+  const [decisionChange, setDecisionChange] = useState("");
+  const [decisionRationale, setDecisionRationale] = useState("");
+  const [decisionEvidence, setDecisionEvidence] = useState("");
+  const [decisionLog, setDecisionLog] = useState([]);
 
   const stageOptions = useMemo(() => {
     const ids = new Set();
@@ -336,7 +441,7 @@ useEffect(() => {
     })) || [];
 
   const spikeBars =
-  stageStats?.stages?.map((stage) => {
+    stageStats?.stages?.map((stage) => {
     const isSpike = stage.flags?.includes("difficulty_spike");
     return {
       label: `Stage ${stage.stage_id}${isSpike ? " ⚠" : ""}`,
@@ -369,6 +474,34 @@ useEffect(() => {
         (stage.by_config?.easy?.completion_rate || 0) -
         (stage.by_config?.hard?.completion_rate || 0),
     })) || [];
+
+  const suggestionCopy = {
+    R3_HELPERS_UNAFFORDABLE: "Helpers feel pricey for the current rewards.",
+    R4_HELPERS_OVERUSED: "Players lean on helpers a lot here.",
+    R5_FAIRNESS_VIOLATION: "Player segments aren’t getting a fair shake.",
+    R6_PROGRESSION_DROPOFF: "A lot of players drop here.",
+  };
+
+  function addDecision(e) {
+    e.preventDefault();
+    const trimmedChange = decisionChange.trim();
+    const trimmedRationale = decisionRationale.trim();
+    const trimmedEvidence = decisionEvidence.trim();
+    if (!trimmedChange || !trimmedRationale) return;
+
+    const next = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      stageId: Number(decisionStageId),
+      change: trimmedChange,
+      rationale: trimmedRationale,
+      evidence: trimmedEvidence || "No specific chart noted.",
+      timestamp: new Date().toLocaleString(),
+    };
+    setDecisionLog((prev) => [next, ...prev]);
+    setDecisionChange("");
+    setDecisionRationale("");
+    setDecisionEvidence("");
+  }
 
   return (
     <main style={{ padding: 24, display: "grid", gap: 16 }}>
@@ -412,45 +545,120 @@ useEffect(() => {
 
       <div style={{ display: "grid", gap: 16 }}>
       <DataBlock title="1) Funnel View (Starts → Completes → Drop-off)">
-        <BarChart data={funnelBars} maxValue={1} />
+        <BarChart data={funnelBars} valueFormatter={formatPercent} />
         <div style={{ marginTop: 12 }}>
           <FunnelTable stages={funnel?.stages || []} />
         </div>
       </DataBlock>
 
         <DataBlock title="2) Difficulty / Spike Detection (Failure Rate)">
-          <BarChart data={spikeBars} maxValue={1} />
+          <BarChart data={spikeBars} valueFormatter={formatPercent} />
         </DataBlock>
 
         <DataBlock title="3) Progression Curves (Avg Time per Stage)">
-          <LineChart data={progressionTime} />
+          <LineChart data={progressionTime} valueFormatter={formatSeconds} />
         </DataBlock>
 
         <DataBlock title="3) Progression Curves (Net Tokens per Stage)">
-          <LineChart data={progressionTokens} color="#ff922b" />
+          <LineChart data={progressionTokens} color="#ff922b" valueFormatter={formatTokens} />
         </DataBlock>
 
         <DataBlock title="4) Fairness Comparison (Completion Gap)">
-          <BarChart data={fairnessBars} maxValue={1} />
+          <BarChart data={fairnessBars} valueFormatter={formatPercent} />
         </DataBlock>
 
         <DataBlock title="5) Config Comparison (Easy vs Hard Completion Gap)">
-          <BarChart data={compareBars} maxValue={1} />
+          <BarChart data={compareBars} valueFormatter={formatPercent} />
         </DataBlock>
       </div>
 
       <section style={{ display: "grid", gap: 16 }}>
-        <DataBlock title="Balancing Suggestions">
+        <DataBlock title="Balancing Ideas (Quick Takeaways)">
           {suggestions.length === 0 ? (
-            <p>No suggestions yet (seeded telemetry is small).</p>
+            <p>Nothing to flag yet — data is still light.</p>
           ) : (
             <ul>
               {suggestions.map((item) => (
                 <li key={`${item.rule_id}-${item.stage_id}`}>
-                  <strong>{item.rule_id}</strong> — Stage {item.stage_id}: {item.expected_effect}
+                  Stage {item.stage_id}:{" "}
+                  {suggestionCopy[item.rule_id] || item.expected_effect || "Worth a second look."}
                 </li>
               ))}
             </ul>
+          )}
+          
+        </DataBlock>
+
+        <DataBlock title="Decision Log (What we changed and why)">
+          
+          <form onSubmit={addDecision} style={{ display: "grid", gap: 8 }}>
+            <label>
+              Stage
+              <select
+                value={decisionStageId}
+                onChange={(e) => setDecisionStageId(e.target.value)}
+                style={{ marginLeft: 8 }}
+              >
+                {stageOptions.map((stage) => (
+                  <option key={stage} value={stage}>
+                    {stage}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              What did you change?
+              <input
+                type="text"
+                value={decisionChange}
+                onChange={(e) => setDecisionChange(e.target.value)}
+                placeholder="Example: Lowered peek cost from 3 → 2"
+                style={{ marginLeft: 8, width: "100%" }}
+              />
+            </label>
+            <label>
+              Why?
+              <input
+                type="text"
+                value={decisionRationale}
+                onChange={(e) => setDecisionRationale(e.target.value)}
+                placeholder="Example: Stage 1 helper usage was too low"
+                style={{ marginLeft: 8, width: "100%" }}
+              />
+            </label>
+            <label>
+              Evidence (which chart?)
+              <input
+                type="text"
+                value={decisionEvidence}
+                onChange={(e) => setDecisionEvidence(e.target.value)}
+                placeholder="Example: Difficulty Spike chart + Funnel drop-off"
+                style={{ marginLeft: 8, width: "100%" }}
+              />
+            </label>
+            <button type="submit">Add note</button>
+          </form>
+
+          {decisionLog.length === 0 ? (
+            <p style={{ marginTop: 12, fontSize: 13, opacity: 0.75 }}>
+              No decisions recorded yet.
+            </p>
+          ) : (
+            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+              {decisionLog.map((entry) => (
+                <div
+                  key={entry.id}
+                  style={{ border: "1px solid #e3e3e3", borderRadius: 8, padding: 10 }}
+                >
+                  <div style={{ fontSize: 13, opacity: 0.7 }}>{entry.timestamp}</div>
+                  <div style={{ marginTop: 6 }}>
+                    <strong>Stage {entry.stageId}:</strong> {entry.change}
+                  </div>
+                  <div style={{ marginTop: 4 }}>Why: {entry.rationale}</div>
+                  <div style={{ marginTop: 4, opacity: 0.8 }}>Evidence: {entry.evidence}</div>
+                </div>
+              ))}
+            </div>
           )}
         </DataBlock>
 
