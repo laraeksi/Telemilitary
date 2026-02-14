@@ -378,6 +378,28 @@ function Dashboard() {
     }
   }
 
+  async function loadDecisionLog(selectedConfig) {
+    try {
+      const data = await fetchJson(`/api/decisions?config_id=${selectedConfig}`);
+      const mapped = (data.decisions || []).map((entry) => ({
+        id: entry.decision_id,
+        stageId: entry.stage_id,
+        change: entry.change?.summary || entry.change?.description || "Update recorded",
+        rationale: entry.rationale || "",
+        evidence:
+          Array.isArray(entry.evidence_links) && entry.evidence_links.length > 0
+            ? entry.evidence_links.join(", ")
+            : "No specific chart noted.",
+        timestamp: entry.created_at
+          ? new Date(entry.created_at).toLocaleString()
+          : "Unknown time",
+      }));
+      setDecisionLog(mapped);
+    } catch {
+      setDecisionLog([]);
+    }
+  }
+
   async function runSimulation(e) {
     e.preventDefault();
     setError("");
@@ -421,10 +443,11 @@ function Dashboard() {
   }
 
   // 1) Load metrics whenever configId changes
-useEffect(() => {
-  loadMetrics(configId);
-  loadSuggestions(configId);
-}, [configId]);
+  useEffect(() => {
+    loadMetrics(configId);
+    loadSuggestions(configId);
+    loadDecisionLog(configId);
+  }, [configId]);
 
 // 2) Keep simStageId valid whenever stageOptions changes
 useEffect(() => {
@@ -482,25 +505,31 @@ useEffect(() => {
     R6_PROGRESSION_DROPOFF: "A lot of players drop here.",
   };
 
-  function addDecision(e) {
+  async function addDecision(e) {
     e.preventDefault();
     const trimmedChange = decisionChange.trim();
     const trimmedRationale = decisionRationale.trim();
     const trimmedEvidence = decisionEvidence.trim();
     if (!trimmedChange || !trimmedRationale) return;
 
-    const next = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      stageId: Number(decisionStageId),
-      change: trimmedChange,
-      rationale: trimmedRationale,
-      evidence: trimmedEvidence || "No specific chart noted.",
-      timestamp: new Date().toLocaleString(),
-    };
-    setDecisionLog((prev) => [next, ...prev]);
-    setDecisionChange("");
-    setDecisionRationale("");
-    setDecisionEvidence("");
+    try {
+      await fetchJson("/api/decisions", {
+        method: "POST",
+        body: JSON.stringify({
+          config_id: configId,
+          stage_id: Number(decisionStageId),
+          change: { summary: trimmedChange },
+          rationale: trimmedRationale,
+          evidence_links: trimmedEvidence ? [trimmedEvidence] : [],
+        }),
+      });
+      setDecisionChange("");
+      setDecisionRationale("");
+      setDecisionEvidence("");
+      loadDecisionLog(configId);
+    } catch {
+      setError("Failed to save decision note.");
+    }
   }
 
   return (

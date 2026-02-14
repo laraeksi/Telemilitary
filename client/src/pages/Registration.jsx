@@ -66,51 +66,51 @@ function Registration(){
 
  return (
 
-  <main style={{ padding: 24 }}>
-      <h1 style={{ marginBottom: 40 }}>New Designer Registration</h1>
-      <p style={{ marginTop: 0, opacity: 0.8 }}>
+  <main className="page">
+      <div className="page__content">
+        <section className="panel">
+          <h1 className="panel__title">New Designer Registration</h1>
+          <p className="panel__subtitle">
         Please enter your new designer details.
       </p>
-      <ul style={{ marginTop: 0, paddingLeft: 18, opacity: 0.8 }}>
+          <ul className="rule-list">
         {passwordRules.map((rule) => (
           <li key={rule}>{rule}</li>
         ))}
-      </ul>
+          </ul>
 
-       {error && <p style={{ color: "red" }}>{error}</p>}
+          {error && <p className="alert">{error}</p>}
 
-              <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12, maxWidth: 360 }}>
-        <label>
+          <form onSubmit={handleSubmit} className="form" style={{ maxWidth: 420 }}>
+        <label className="field">
           Username
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
           />
         </label>
       
-      <label>
+      <label className="field">
           Password
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
           />
         </label>
 
          
         
-
-        <button type="submit">Continue</button> 
-
-        
-
-        <Link to="/designer">
-          <button type="button">Back</button>
-        </Link>
+        <div className="form-actions">
+          <button type="submit">Continue</button> 
+          <Link to="/designer">
+            <button type="button" data-variant="ghost">Back</button>
+          </Link>
+        </div>
       </form>
+        </section>
+      </div>
     </main>
 
 

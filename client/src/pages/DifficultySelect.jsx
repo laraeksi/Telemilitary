@@ -20,16 +20,18 @@ export default function DifficultySelect() {
     }
 
     return (
-        <main style={{ padding: 20 }}>
-        <h1 style={{ marginBottom: 8 }}>Select difficulty</h1>
-        <p style={{ marginTop: 0, opacity: 0.7 }}>
-            Prototype: 2 stages per difficulty
-        </p>
+        <main className="page">
+        <div className="page__content">
+            <section className="panel hero">
+            <h1 className="hero__title">Select difficulty</h1>
+            <p className="hero__subtitle">Prototype: 2 stages per difficulty</p>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
-            <button type="button" onClick={() => choose("easy")}>Easy</button>
-            <button type="button" onClick={() => choose("balanced")}>Balanced</button>
-            <button type="button" onClick={() => choose("hard")}>Hard</button>
+            <div className="action-row">
+                <button type="button" onClick={() => choose("easy")}>Easy</button>
+                <button type="button" onClick={() => choose("balanced")}>Balanced</button>
+                <button type="button" onClick={() => choose("hard")}>Hard</button>
+            </div>
+            </section>
         </div>
         </main>
     );
