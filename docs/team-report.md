@@ -9,6 +9,13 @@
 - Client emits structured events for sessions, stages, matches, resources, powerups, and failures.
 - Backend validates event structure and stores telemetry in SQLite.
 
+**Secure login/registration system for users with the designer role**
+- Any user can register as a designer using a chosen username and a password to view the analytics dashboard.
+- The credentials for registered users are stored in a local database and are not visible to any user.
+- No personal information is collected from a user with the player role and their access to the dashboard is restricted.
+- Should it be that a user chooses an existing username for registration, an error prompt will be triggered and the user will be requested to choose another username.
+- Logged in users will be instantly logged out if they decide to return to the main menu.
+
 **Designer dashboard**
 - Funnel view (completion rate by stage)
 - Difficulty/spike view (failure rates)
