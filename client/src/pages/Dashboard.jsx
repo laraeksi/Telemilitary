@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { apiUrl } from "../api/base";
 
 const CONFIGS = ["easy", "balanced", "hard"];
 
@@ -9,7 +10,7 @@ const designerHeaders = {
 };
 
 async function fetchJson(url, options = {}) {
-  const res = await fetch(url, {
+  const res = await fetch(apiUrl(url), {
     ...options,
     headers: { ...designerHeaders, ...(options.headers || {}) },
   });
@@ -425,7 +426,7 @@ function Dashboard() {
 
   async function exportCsv() {
     try {
-      const res = await fetch(`/api/export/events.csv?config_id=${configId}`, {
+      const res = await fetch(apiUrl(`/api/export/events.csv?config_id=${configId}`), {
         headers: { "X-Role": "designer" },
       });
       if (!res.ok) throw new Error("export failed");

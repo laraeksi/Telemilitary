@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { apiUrl } from "../api/base";
 
 function DesignerLogin() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ function DesignerLogin() {
     e.preventDefault();
 
     
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch(apiUrl("/api/auth/login"), {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({

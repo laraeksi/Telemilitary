@@ -1,4 +1,6 @@
 // src/telemetry/client.js
+import { apiUrl } from "../api/base";
+
 const PENDING_KEY = "telemetry_pending_events_v1";
 
 function safeGet(key) {
@@ -42,7 +44,7 @@ function savePending(arr) {
 }
 
 async function postEvent(evt) {
-  const res = await fetch("/api/events", {
+  const res = await fetch(apiUrl("/api/events"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(evt),

@@ -1,19 +1,29 @@
 // src/telemetry/events.js
+import { apiUrl } from "../api/base";
 import { emitEvent, getOrCreateId, nowIso } from "./client";
 
 const USER_KEY = "telemetry_user_id_v1";
 const SESSION_KEY = "telemetry_session_id_v1";
 const CONFIG_KEY = "telemetry_config_id_v1";
+const CONSENT_KEY = "telemetry_consent_v1";
 
 let userId = null;
 let sessionId = null;
 let configId = null;
 
+function hasConsent() {
+  try {
+    return localStorage.getItem(CONSENT_KEY) === "yes";
+  } catch {
+    return false;
+  }
+}
+
 async function ensureUserId() {
   if (userId) return userId;
   const localId = getOrCreateId(USER_KEY, "u");
   try {
-    const res = await fetch("/api/player/identify", {
+    const res = await fetch(apiUrl("/api/player/identify"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ client_user_id: localId }),
@@ -31,6 +41,7 @@ async function ensureUserId() {
 }
 
 export async function startSession(config) {
+  if (!hasConsent()) return { skipped: true };
   configId = config;
   localStorage.setItem(CONFIG_KEY, configId);
 
@@ -38,7 +49,7 @@ export async function startSession(config) {
   const startedAt = nowIso();
 
   try {
-    const res = await fetch("/api/sessions/start", {
+    const res = await fetch(apiUrl("/api/sessions/start"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: currentUserId, config_id: configId, started_at: startedAt }),
@@ -63,6 +74,7 @@ export async function startSession(config) {
 }
 
 export async function endSession(outcome, stageId) {
+  if (!hasConsent()) return { skipped: true };
   const endedAt = nowIso();
   const currentSessionId = sessionId || localStorage.getItem(SESSION_KEY);
   const currentUserId = userId || localStorage.getItem(USER_KEY);
@@ -70,7 +82,7 @@ export async function endSession(outcome, stageId) {
 
   if (currentSessionId && currentUserId && currentConfig) {
     try {
-      await fetch("/api/sessions/end", {
+      await fetch(apiUrl("/api/sessions/end"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,6 +104,7 @@ export async function endSession(outcome, stageId) {
 }
 
 export async function trackEvent(eventType, payload = {}) {
+  if (!hasConsent()) return { skipped: true };
   const currentUserId = await ensureUserId();
   const currentSessionId = sessionId || localStorage.getItem(SESSION_KEY) || getOrCreateId(SESSION_KEY, "s");
   const currentConfig = configId || localStorage.getItem(CONFIG_KEY) || "balanced";
