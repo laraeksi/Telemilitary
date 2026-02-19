@@ -11,55 +11,38 @@ function DesignerLogin() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setError("");
 
-    
-    const res = await fetch(apiUrl("/api/auth/login"), {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    username: username,
-    password: password
-  })
-  });
+    const TEST_USERNAME = "designer";
+    const TEST_PASSWORD = "1234";
 
-   const TEST_USERNAME = "designer";
-  const TEST_PASSWORD = "1234";
+    if (username === TEST_USERNAME && password === TEST_PASSWORD) {
+      navigate("/dashboard");
+      return;
+    }
 
-  if (username === TEST_USERNAME && password === TEST_PASSWORD) {
-  
-    navigate("/dashboard");
-  }
+    try {
+      const res = await fetch(apiUrl("/api/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
+      });
 
- const data = await res.json();
+      const data = await res.json().catch(() => null);
 
- try{
- if (res.ok && data.ok ){
+      if (res.ok && data?.ok) {
+        navigate("/dashboard");
+        return;
+      }
 
-  navigate("/dashboard");
-  
-}
-
-  else {
-    
-    setError(data.error.message);
-    //console.error(error)
-    
-  }
-}
-
- catch(err){
-  setError("Network failure.")
-  console.error(err)
- }
-
-
-
-    // FRONTEND PLACEHOLDER:
-    // Call backend: POST /api/designer/login
-    // For now, just allows navigation so we can build the dashboard UI.
-
-    
-    
+      setError(data?.error?.message || "Invalid credentials. Please try again.");
+    } catch (err) {
+      setError("Unable to reach the server.");
+      console.error(err);
+    }
   }
 
   return (

@@ -34,6 +34,7 @@ function Registration(){
 
  async function handleSubmit(e) {
     e.preventDefault();
+    setError("");
 
     const passwordError = getPasswordError(password);
     if (passwordError) {
@@ -41,27 +42,28 @@ function Registration(){
       return;
     }
     
- const res = await fetch(apiUrl("/api/auth/register"), {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    username: username,
-    password: password
-  })
-  });
+    try {
+      const res = await fetch(apiUrl("/api/auth/register"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
+      });
 
-  const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-  if (res.ok && data.ok){
-    navigate("/dashboard");
-  }
+      if (res.ok && data?.ok) {
+        navigate("/dashboard");
+        return;
+      }
 
-  else {
-    setError(data.error?.message || "Registration failed.");
-  }
-
- 
-    
+      setError(data?.error?.message || "Registration failed.");
+    } catch (err) {
+      setError("Unable to reach the server.");
+      console.error(err);
+    }
   }
 
 
