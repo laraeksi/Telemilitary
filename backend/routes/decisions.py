@@ -1,3 +1,5 @@
+# Stores and fetches designer decision notes.
+# Used by the decision log UI.
 # routes/decisions.py
 # Routes for storing and viewing designer balancing decisions
 
@@ -15,15 +17,18 @@ from utils.auth import require_designer
 bp = Blueprint("decisions", __name__)
 
 
+# List decision log entries.
 @bp.get("/api/decisions")
 def list_decisions():
     # Designer-only endpoint to list balancing decisions
     # Can optionally filter by config_id
+    # Blocks non-designer roles.
     auth_error = require_designer()
     if auth_error:
         return auth_error
 
     config_id = request.args.get("config_id")
+    # Build query dynamically based on filters.
     query = "SELECT * FROM decisions"
     params = []
     if config_id:
@@ -34,6 +39,7 @@ def list_decisions():
         rows = conn.execute(f"{query} ORDER BY timestamp DESC", params).fetchall()
 
     decisions = []
+    # Convert rows to JSON-friendly dicts.
     for row in rows:
         # Parse stored JSON fields safely
         change = {}
@@ -66,6 +72,7 @@ def list_decisions():
     return {"decisions": decisions}
 
 
+# Create a new decision log entry.
 @bp.post("/api/decisions")
 def create_decision():
     # Designer-only endpoint to record a new balancing decision

@@ -1,3 +1,5 @@
+// Home menu plus telemetry consent dialog.
+// Prompts for telemetry consent before play.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Modal from "../components/Modal";
@@ -8,6 +10,7 @@ function Menu() {
   const [consentMode, setConsentMode] = useState("none"); // "ask" | "info" | "none"
 
   useEffect(() => {
+    // Restore previous consent choice if it exists.
     const stored = localStorage.getItem(CONSENT_KEY);
     if (stored === "no") {
       setConsentMode("info");
@@ -19,16 +22,19 @@ function Menu() {
   }, []);
 
   function acceptConsent() {
+    // Persist consent for future sessions.
     localStorage.setItem(CONSENT_KEY, "yes");
     setConsentMode("none");
   }
 
   function declineConsent() {
+    // Remember opt-out.
     localStorage.setItem(CONSENT_KEY, "no");
     setConsentMode("info");
   }
 
   function closeInfo() {
+    // Hide the info-only modal.
     setConsentMode("none");
   }
 

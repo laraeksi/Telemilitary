@@ -1,3 +1,5 @@
+// ESLint setup for React + hooks.
+// Keeps lint rules lightweight for this project.
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -23,6 +25,8 @@ export default defineConfig([
       },
     },
     rules: {
+      // Allow unused constants that look like enums.
+      // Keeps warnings low during prototyping.
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },

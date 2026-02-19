@@ -1,18 +1,26 @@
+# Data models and enums used across the backend.
+# Mostly used as structured documentation.
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 # Models.py is acting as structured documentation at the moment but its not affecting behaviour
+# These are still useful for shared naming.
 
+# Difficulty config enum.
 class ConfigId(str, Enum):
+    # Difficulty options used in telemetry/configs.
     EASY = "easy"
     BALANCED = "balanced"
     HARD = "hard"
 
 
+# Telemetry event types.
 class EventType(str, Enum):
+    # Session lifecycle
     SESSION_START = "session_start"
     SESSION_END = "session_end"
+    # Stage lifecycle
     STAGE_START = "stage_start"
     STAGE_COMPLETE = "stage_complete"
     STAGE_FAIL = "stage_fail"
@@ -28,23 +36,29 @@ class EventType(str, Enum):
     SETTINGS_CHANGE = "settings_change"
 
 
+# Reasons for failing a stage.
 class FailReason(str, Enum):
+    # Reasons for failing a stage.
     TIME = "time"
     MOVES = "moves"
 
 
+# Powerup types used in telemetry.
 class PowerupType(str, Enum):
     PEEK = "peek"
     FREEZE = "freeze"
     SHUFFLE = "shuffle"
 
 
+# Session outcomes.
 class Outcome(str, Enum):
+    # Final outcome for a session.
     COMPLETED = "completed"
     QUIT = "quit"
     FAILED = "failed"
 
 
+# User record shape.
 @dataclass
 class User:
     user_id: str
@@ -52,6 +66,7 @@ class User:
     segment_tags: List[str] = field(default_factory=list)
 
 
+# Session record shape.
 @dataclass
 class Session:
     session_id: str
@@ -66,6 +81,7 @@ class Session:
     stages_completed: Optional[int] = None
 
 
+# Stage record shape.
 @dataclass
 class Stage:
     stage_id: int
@@ -74,6 +90,7 @@ class Stage:
     completion_rule: str
 
 
+# Config record shape.
 @dataclass
 class Config:
     config_id: ConfigId
@@ -81,6 +98,7 @@ class Config:
     parameter_set: Dict[str, Any]
 
 
+# Event record shape.
 @dataclass
 class Event:
     event_id: str
@@ -94,6 +112,7 @@ class Event:
     is_valid: Optional[bool] = None
 
 
+# Anomaly record shape.
 @dataclass
 class Anomaly:
     anomaly_id: str
@@ -105,6 +124,7 @@ class Anomaly:
     details: Dict[str, Any] = field(default_factory=dict)
 
 
+# Balancing rule record shape.
 @dataclass
 class BalancingRule:
     rule_id: str
@@ -114,6 +134,7 @@ class BalancingRule:
     explanation: str
 
 
+# Decision log record shape.
 @dataclass
 class DecisionLog:
     decision_id: str

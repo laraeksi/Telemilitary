@@ -1,7 +1,10 @@
+/* Global theme variables and base element styles. */
+/* Sets colors, fonts, and base widgets. */
 :root {
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
+  /* Theme palette variables */
   color: #0f172a;
   background-color: #f5f7fb;
   --text: #0f172a;
@@ -25,6 +28,7 @@
 
 body {
   margin: 0;
+  /* Keep full-page background visible */
   min-width: 320px;
   min-height: 100vh;
   background: radial-gradient(1200px circle at top left, #eef2ff 0%, #f8fafc 35%, #f5f7fb 100%);
@@ -33,6 +37,7 @@ body {
 
 a {
   font-weight: 600;
+  /* Links use the accent color */
   color: var(--accent);
   text-decoration: none;
 }
@@ -76,6 +81,7 @@ button:disabled {
   transform: none;
 }
 
+/* Ghost button variant for secondary actions */
 button[data-variant="ghost"] {
   background: #ffffff;
   color: var(--accent);

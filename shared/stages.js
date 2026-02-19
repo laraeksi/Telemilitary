@@ -1,3 +1,5 @@
+// Shared stage defaults for the game.
+// One source of truth for stage rules.
 /**
  * Pseudocode:
  * 1) Define base stage parameters for 10 stages.
@@ -27,8 +29,10 @@ export const CONFIG_DEFINITIONS = [
   { configId: "hard", label: "Hard", parameterOverrides: { timerSeconds: -5 } },
 ];
 
+// Helper cost bands scale with stage index.
 // TODO: Apply ConfigDefinition.parameterOverrides when building per-config stage settings.
 
+// Group stages into bands for helper cost tiers.
 const getBandForStage = (stageIndex) => {
   if (stageIndex <= 2) return 1;
   if (stageIndex <= 5) return 2;
@@ -37,6 +41,7 @@ const getBandForStage = (stageIndex) => {
 
 export const STAGE_CONFIGS = STAGE_CARD_COUNTS.map((cards, index) => {
   const stageNumber = index + 1;
+  // Stage index is zero-based, id is one-based.
   const band = getBandForStage(index);
 
   return {

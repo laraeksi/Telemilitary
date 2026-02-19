@@ -1,6 +1,10 @@
+<!-- Prototype report summary. -->
+<!-- Short summary of CW1 outcomes. -->
 # Prototype Report (CW1)
 
 ## Executive summary
+<!-- Short overview used for CW1 submission -->
+<!-- Keep within 2-3 sentences -->
 Telemilitary is a small browser memory match game with telemetry and a designer dashboard. The system captures structured events, computes funnel and difficulty metrics, and provides rule-based balancing suggestions with a lightweight simulation preview.
 
 ## Prioritised requirements

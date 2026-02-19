@@ -1,18 +1,25 @@
+# DB helpers for SQLite and seeding.
+# Initializes schema and default configs.
 import sqlite3
 
 from config import Config
 
 
 
+# Open a SQLite connection with row dicts.
 def get_connection():
     conn = sqlite3.connect(Config.DB_PATH)
+    # Allow dict-like row access.
     conn.row_factory = sqlite3.Row
+    # Keep autocommit behavior via context manager.
     return conn
 
 
+# Seed default configs and stages.
 def _seed_configs(conn: sqlite3.Connection):
     existing = conn.execute("SELECT COUNT(*) as count FROM configs").fetchone()
     if existing and existing["count"] > 0:
+        # Skip seeding if configs already exist.
         return
 
     configs = [
@@ -27,6 +34,7 @@ def _seed_configs(conn: sqlite3.Connection):
             (config_id, label, 5),
         )
 
+        # Seed 10 stages per config.
         for stage_id in range(1, 11):
             card_count = 6 + stage_id * 2
             timer_seconds = timer_base - stage_id * 2
@@ -82,6 +90,7 @@ def _seed_configs(conn: sqlite3.Connection):
             )
 
 
+# Initialize schema and seed data.
 def init_db():
     with get_connection() as conn:
         with open("data/schema.sql", "r", encoding="utf-8") as file:

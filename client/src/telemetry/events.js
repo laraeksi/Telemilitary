@@ -1,3 +1,5 @@
+// High-level telemetry event helpers.
+// Orchestrates session start/end and events.
 // src/telemetry/events.js
 import { apiUrl } from "../api/base";
 import { emitEvent, getOrCreateId, nowIso } from "./client";
@@ -13,6 +15,7 @@ let configId = null;
 
 function hasConsent() {
   try {
+    // Only send events if the user opted in.
     return localStorage.getItem(CONSENT_KEY) === "yes";
   } catch {
     return false;
@@ -22,6 +25,7 @@ function hasConsent() {
 async function ensureUserId() {
   if (userId) return userId;
   const localId = getOrCreateId(USER_KEY, "u");
+  // Try to let the backend assign a canonical user id.
   try {
     const res = await fetch(apiUrl("/api/player/identify"), {
       method: "POST",
@@ -64,6 +68,7 @@ export async function startSession(config) {
   }
 
   if (!sessionId) {
+    // Fallback to a local session id.
     sessionId = getOrCreateId(SESSION_KEY, "s");
   }
 
@@ -76,6 +81,7 @@ export async function startSession(config) {
 export async function endSession(outcome, stageId) {
   if (!hasConsent()) return { skipped: true };
   const endedAt = nowIso();
+  // Read cached ids if session hasn't been started.
   const currentSessionId = sessionId || localStorage.getItem(SESSION_KEY);
   const currentUserId = userId || localStorage.getItem(USER_KEY);
   const currentConfig = configId || localStorage.getItem(CONFIG_KEY);
@@ -106,6 +112,7 @@ export async function endSession(outcome, stageId) {
 export async function trackEvent(eventType, payload = {}) {
   if (!hasConsent()) return { skipped: true };
   const currentUserId = await ensureUserId();
+  // Pull session/config from memory or localStorage.
   const currentSessionId = sessionId || localStorage.getItem(SESSION_KEY) || getOrCreateId(SESSION_KEY, "s");
   const currentConfig = configId || localStorage.getItem(CONFIG_KEY) || "balanced";
   const stageId = payload.stageId ?? 1;

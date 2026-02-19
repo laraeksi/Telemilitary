@@ -1,3 +1,5 @@
+# Telemetry ingest and export endpoints.
+# Validates and stores gameplay events.
 # routes/telemetry.py
 # Routes for ingesting, validating, and exporting telemetry events
 
@@ -21,17 +23,20 @@ from utils.errors import error_response
 bp = Blueprint("telemetry", __name__)
 
 
+# Ingest a single telemetry event.
 @bp.post("/api/events")
 def ingest_event():
     # Ingest a single telemetry event from the frontend
 
     body = request.get_json() or {}
+    # Generate an event_id if missing.
 
     # Ensure each event has a unique ID
     if not body.get("event_id"):
         body["event_id"] = str(uuid.uuid4())
 
     # Validate event structure and payload
+    # Any issues will be recorded as anomalies.
     validation = validate_event(body)
 
     # Normalise payload to a dictionary
@@ -106,6 +111,7 @@ def ingest_event():
             )
 
     # Return validation result to the frontend
+    # Keep anomaly details minimal for the client.
     response_anomalies = []
     for anomaly in validation["anomalies"]:
         detail = anomaly.get("details", {}).get("field") or anomaly.get("details")
@@ -123,6 +129,7 @@ def ingest_event():
     }, 201
 
 
+# List telemetry events (designer-only).
 @bp.get("/api/events")
 def list_events():
     # Designer-only endpoint to query raw telemetry events
@@ -171,6 +178,7 @@ def list_events():
     return {"filters": filters, "events": events}
 
 
+# Export telemetry events as CSV.
 @bp.get("/api/export/events.csv")
 def export_events():
     # Designer-only CSV export of telemetry events

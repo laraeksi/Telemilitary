@@ -1,3 +1,5 @@
+// Shared JSDoc type shapes.
+// Keeps client/server docs aligned.
 /**
  * Pseudocode:
  * 1) Document shared shapes used across client/server.
@@ -55,4 +57,6 @@
  * @property {Partial<BaseParameters>=} parameterOverrides
  */
 
+// Export placeholder to keep module non-empty.
+// JSDoc here is for reference only.
 export const TYPE_DOCS = {};

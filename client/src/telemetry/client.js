@@ -1,3 +1,5 @@
+// Low-level sender for telemetry events.
+// Handles retrying pending events.
 // src/telemetry/client.js
 import { apiUrl } from "../api/base";
 
@@ -5,6 +7,7 @@ const PENDING_KEY = "telemetry_pending_events_v1";
 
 function safeGet(key) {
   try {
+    // Guard against storage errors (private mode).
     return localStorage.getItem(key);
   } catch {
     return null;
@@ -13,6 +16,7 @@ function safeGet(key) {
 
 function safeSet(key, val) {
   try {
+    // Best-effort write to localStorage.
     localStorage.setItem(key, val);
   } catch {
     // ignore storage failures
@@ -33,6 +37,7 @@ export function getOrCreateId(key, prefix) {
 
 function loadPending() {
   try {
+    // Stored as JSON array.
     return JSON.parse(safeGet(PENDING_KEY) || "[]");
   } catch {
     return [];
@@ -44,6 +49,7 @@ function savePending(arr) {
 }
 
 async function postEvent(evt) {
+  // Send one event to the API.
   const res = await fetch(apiUrl("/api/events"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -55,6 +61,7 @@ async function postEvent(evt) {
 }
 
 export async function emitEvent(evt) {
+  // Persist first so events survive reloads.
   const pending = loadPending();
   pending.push({ evt, createdAt: nowIso() });
   savePending(pending);
@@ -66,6 +73,7 @@ export async function flushPendingEvents() {
   const pending = loadPending();
   if (!pending.length) return;
 
+  // Send in order and stop on first failure.
   const remaining = [];
   for (const item of pending) {
     try {

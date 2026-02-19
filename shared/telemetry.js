@@ -1,3 +1,5 @@
+// JSDoc docs for telemetry event shapes.
+// Helps keep event payloads consistent.
 /**
  * Pseudocode:
  * 1) Define the telemetry event shape via JSDoc.
@@ -31,4 +33,6 @@
  * @property {Object<string, unknown>=} details
  */
 
+// Export placeholder to keep module non-empty.
+// Use JSDoc types for consistency.
 export const TELEMETRY_DOCS = {};

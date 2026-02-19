@@ -1,3 +1,5 @@
+// Designer dashboard with charts and controls.
+// Fetches metrics and renders charts from API data.
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiUrl } from "../api/base";
@@ -17,6 +19,7 @@ async function fetchJson(url, options = {}) {
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
+  // Always return parsed JSON for callers.
   return res.json();
 }
 
@@ -36,6 +39,7 @@ const formatTokens = (value) => `${value.toFixed(1)} tokens`;
 function BarChart({ data, height = 18, valueFormatter }) {
   if (!data?.length) return <p>No data yet.</p>;
 
+  // Compute min/max for scaling bars.
   const values = data.map((d) => d.value);
   const minValue = Math.min(...values, 0);
   const maxValue = Math.max(...values, 0, 1);
@@ -51,6 +55,7 @@ function BarChart({ data, height = 18, valueFormatter }) {
     });
 
   const ticks = [minValue, 0, maxValue];
+  // Use three reference ticks (min/0/max).
   const tickLabels = ticks.map((tick) => formatValue(tick));
   const tickPositions = ticks.map((tick) => ((tick - minValue) / range) * 100);
 
@@ -117,6 +122,7 @@ function BarChart({ data, height = 18, valueFormatter }) {
 
 function LineChart({ data, height = 180, color = "#37b24d", valueFormatter }) {
   if (!data?.length) return <p>No data yet.</p>;
+  // Padding keeps axes labels visible.
   const padding = 36;
   const width = 560;
   const values = data.map((d) => d.value);
@@ -426,6 +432,7 @@ function Dashboard() {
 
   async function exportCsv() {
     try {
+      // Download events as CSV for analysis.
       const res = await fetch(apiUrl(`/api/export/events.csv?config_id=${configId}`), {
         headers: { "X-Role": "designer" },
       });
@@ -445,6 +452,7 @@ function Dashboard() {
 
   // 1) Load metrics whenever configId changes
   useEffect(() => {
+    // Refresh all dashboard panels when config changes.
     loadMetrics(configId);
     loadSuggestions(configId);
     loadDecisionLog(configId);

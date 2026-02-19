@@ -1,3 +1,5 @@
+// Difficulty configs for each stage.
+// Each config is an array of stage settings.
 // src/game/stages.js
 export const DIFFICULTY_CONFIGS = {
   easy: [
@@ -6,6 +8,7 @@ export const DIFFICULTY_CONFIGS = {
       stageId: 1,
       rows: 2,
       cols: 4,
+      // Time/move limits get easier on this config.
       timeLimit: 55,     // seconds
       moveLimit: 20,     // number of pair attempts
       startTokens: 5,
@@ -16,6 +19,7 @@ export const DIFFICULTY_CONFIGS = {
       penaltyMismatchTime: 2,  // seconds removed on mismatch
 
       // Powerups (we’ll implement later)
+      // Costs in tokens for each helper.
       powerupCosts: {
         peek: 2,
         freeze: 3,
@@ -59,6 +63,7 @@ export const DIFFICULTY_CONFIGS = {
       penaltyMismatchTime: 2,  // seconds removed on mismatch
 
       // Powerups (we’ll implement later)
+      // Each value is a token cost.
       powerupCosts: {
         peek: 2,
         freeze: 3,

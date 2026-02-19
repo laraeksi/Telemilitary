@@ -1,3 +1,5 @@
+# Session start/end and summaries.
+# Tracks high-level session lifecycle.
 # routes/sessions.py
 # Routes for starting/ending a game session and generating a session summary
 
@@ -17,18 +19,22 @@ from utils.errors import error_response
 bp = Blueprint("sessions", __name__)
 
 
+# Identify or create a pseudonymous user id.
 @bp.post("/api/player/identify")
 def identify_player():
     # Creates/returns a pseudonymous user_id (frontend can provide one, or backend generates)
     body = request.get_json() or {}
+    # Prefer client-provided id when present.
     user_id = body.get("client_user_id") or f"u_{uuid.uuid4().hex[:8]}"
     return {"user_id": user_id}
 
 
+# Start a new session.
 @bp.post("/api/sessions/start")
 def start_session():
     # Starts a new session (one run through the 10 stages) for a user + chosen config (easy/balanced/hard)
     body = request.get_json() or {}
+    # Pull required identifiers from payload.
     user_id = body.get("user_id")
     config_id = body.get("config_id")
 
@@ -60,10 +66,12 @@ def start_session():
     }, 201
 
 
+# End an existing session.
 @bp.post("/api/sessions/end")
 def end_session():
     # Marks a session as finished (completed/quit/failed) and stores end time + outcome
     body = request.get_json() or {}
+    # Required fields for update.
     session_id = body.get("session_id")
     outcome = body.get("outcome")
     ended_at = body.get("ended_at") or datetime.utcnow().isoformat() + "Z"
@@ -86,6 +94,7 @@ def end_session():
     return {"ok": True}
 
 
+# Build a summary for a session.
 @bp.get("/api/sessions/<session_id>/summary")
 def session_summary(session_id: str):
     # Computes a per-stage and overall summary for a session using stored telemetry events

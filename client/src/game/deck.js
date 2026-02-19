@@ -1,6 +1,9 @@
+// Deck builder and shuffle helper.
+// Produces a shuffled pair deck.
 // src/game/deck.js
 
 function shuffle(array) {
+  // Fisher-Yates shuffle.
   const a = [...array];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -22,7 +25,8 @@ export const CARD_IMAGES = [
   {id: "key", img: "/cards/key.png"},
   {id: "music", img: "/cards/music.png"},
   {id: "compass", img: "/cards/compass.png"},
-  //we will add more later
+  // we will add more later
+  // add unique ids and image paths
 ];
 
 /**
@@ -32,14 +36,17 @@ export const CARD_IMAGES = [
 export function buildDeck({ rows, cols }) {
   const totalCards = rows * cols;
 
+  // Cards must be even to form pairs.
   if (totalCards % 2 !== 0) {
     throw new Error(`Deck size must be even. Got ${rows}x${cols} = ${totalCards}`);
   }
 
+  // Number of pairs needed for this board size.
   const pairsNeeded = totalCards / 2;
 
   // If you don't have enough unique images yet, we reuse them (fine for prototype)
   const chosen = [];
+  // Cycle through images if not enough unique ones.
   for (let i = 0; i < pairsNeeded; i++) {
     chosen.push(CARD_IMAGES[i % CARD_IMAGES.length]);
   }

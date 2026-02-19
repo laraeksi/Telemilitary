@@ -1,3 +1,5 @@
+// This page handles designer registration and basic validation.
+// Validates password rules before sending to the API.
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { apiUrl } from "../api/base";
@@ -8,6 +10,7 @@ function Registration(){
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  // Human-readable rules for the UI list.
   const passwordRules = [
     "At least 8 characters",
     "At least 1 uppercase letter",
@@ -16,6 +19,7 @@ function Registration(){
   ];
 
   function getPasswordError(value) {
+    // Rules are checked in order for clearer feedback.
     if (value.length < 8) {
       return "Password must be at least 8 characters.";
     }
@@ -36,6 +40,7 @@ function Registration(){
     e.preventDefault();
     setError("");
 
+    // Block submit if rules fail.
     const passwordError = getPasswordError(password);
     if (passwordError) {
       setError(passwordError);
@@ -52,6 +57,7 @@ function Registration(){
         })
       });
 
+      // Parse JSON safely in case of errors.
       const data = await res.json().catch(() => null);
 
       if (res.ok && data?.ok) {

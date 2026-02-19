@@ -1,3 +1,5 @@
+# Designer-only balancing endpoints.
+# Provides suggestions and simulations.
 # routes/balancing.py
 # Routes used by designers to analyse and adjust game balance
 
@@ -16,10 +18,12 @@ from utils.errors import error_response
 bp = Blueprint("balancing", __name__)
 
 
+# Return balancing suggestions for a config.
 @bp.post("/api/balancing/suggestions")
 def suggestions():
     # Returns rule-based balancing suggestions for a given config
     # Uses aggregated telemetry data (fail rates, time, etc.)
+    # Designer role required for access.
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -33,10 +37,12 @@ def suggestions():
     return get_suggestions(config_id)
 
 
+# Simulate balance changes for a config.
 @bp.post("/api/balancing/simulate")
 def simulate():
     # Runs a lightweight simulation to estimate the impact of parameter changes
     # Does not modify stored configs
+    # This is read-only.
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -50,10 +56,12 @@ def simulate():
     return simulate_balance_change(payload)
 
 
+# Return editable balancing parameters.
 @bp.get("/api/balancing/parameters")
 def balancing_parameters():
     # Returns all editable balancing parameters for a config
     # Used to populate the designer parameter editor UI
+    # Designer-only access.
     auth_error = require_designer()
     if auth_error:
         return auth_error

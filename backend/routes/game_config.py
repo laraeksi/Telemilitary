@@ -1,3 +1,5 @@
+# Config endpoints for reading/updating game params.
+# Used by designers to tune difficulty.
 # routes/game_config.py
 # Designer-only routes for viewing and editing game configuration parameters
 
@@ -15,16 +17,20 @@ from utils.errors import error_response
 bp = Blueprint("game_config", __name__)
 
 
+# List all configs and stages.
 @bp.get("/api/game/configs")
 def get_game_configs():
     # Returns all game configs (easy / balanced / hard) with their stage parameters
     # Used by the designer dashboard and sometimes the frontend
+    # Public read endpoint.
     return {"configs": fetch_configs()}
 
 
+# Get a single config by id.
 @bp.get("/api/game/configs/<config_id>")
 def get_single_config(config_id: str):
     # Returns a single difficulty configuration (with all its stages) for the game frontend
+    # Used by the game to load parameters.
     config = get_config(config_id)
     if not config:
         return error_response("config not found", status=404)
@@ -33,10 +39,12 @@ def get_single_config(config_id: str):
 
 
 
+# Update one stage in a config.
 @bp.put("/api/game/configs/<config_id>/stages/<int:stage_id>")
 def update_stage_config(config_id: str, stage_id: int):
     # Updates parameters for a single stage in a given config
     # Designer-only endpoint
+    # Validates config and stage id.
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -137,6 +145,7 @@ def update_stage_config(config_id: str, stage_id: int):
     }
 
 
+# Bulk update multiple stages.
 @bp.put("/api/game/configs/<config_id>/stages")
 def bulk_update_stages(config_id: str):
     # Bulk update multiple stages in a single request
@@ -245,6 +254,7 @@ def bulk_update_stages(config_id: str):
     }
 
 
+# Apply global deltas to a config.
 @bp.patch("/api/game/configs/<config_id>/apply")
 def apply_config_deltas(config_id: str):
     # Applies the same parameter delta across all stages in a config

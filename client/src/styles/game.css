@@ -1,5 +1,8 @@
+/* Core game styles (board, cards, controls). */
+/* Focuses on layout and card flip visuals. */
 .game {
     padding: 16px;
+    /* Keep game area centered */
     max-width: 900px;
     margin: 0 auto;
     display: grid;
@@ -26,6 +29,7 @@
     flex-wrap: warp;
 }
 
+/* Standard button look for power-ups */
 .controls button {
     padding: 10px 14px;
     border-radius: 10px;
@@ -46,6 +50,7 @@
 .board {
     display: grid;
     gap: 12px;
+    /* Default grid has 4 columns */
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
@@ -57,6 +62,7 @@
 
 .card {
   width: 100%;
+  /* Ensure square cards */
   min-height: 90px;   /* 👈 add this */
   aspect-ratio: 1 / 1;
   border-radius: 14px;

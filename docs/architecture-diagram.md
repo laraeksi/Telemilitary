@@ -1,3 +1,5 @@
+<!-- Mermaid-style architecture sketch. -->
+<!-- Diagram is for quick reference. -->
 ## Architecture Diagram 
 
 flowchart TB
@@ -82,6 +84,8 @@ flowchart TB
 Notes:
 - This diagram is scaffold-level and shows how the current files connect.
 - Replace placeholder services with real DB connections and API handlers later.
+<!-- Keep this diagram in sync with file moves -->
+<!-- Update if new services are added -->
 need an API because the client and server have different jobs:
 Client (frontend): shows the game and dashboard UI.
 Server (backend): stores telemetry, validates events, computes metrics, runs simulation, enforces roles.

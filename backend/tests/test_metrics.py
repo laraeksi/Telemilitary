@@ -1,12 +1,17 @@
+# Tests for metrics helpers.
+# Covers stage stats and funnel output.
 from logic.metrics import get_funnel_metrics, _build_stage_metrics
 from models import EventType
 
 
+# Basic funnel metrics sanity check.
 def test_funnel_metrics():
     result = get_funnel_metrics("balanced")
+    # Basic sanity check for config id.
     assert result["config_id"] == "balanced"
 
 
+# Stage metrics: completion + token accounting.
 def test_build_stage_metrics_completion_and_tokens():
     # Create a short set of events, start a stage, gain 5 points, spend 2, complete stage
     events = [
@@ -40,6 +45,7 @@ def test_build_stage_metrics_completion_and_tokens():
         },
     ]
     
+    # Build metrics from the mocked events list.
     stats, stage_records = _build_stage_metrics(events)
 
     assert 1 in stats
@@ -72,6 +78,7 @@ def test_build_stage_metrics_completion_and_tokens():
     assert record["fail_reason"] is None
 
 
+# Stage metrics: failure + move-fail handling.
 def test_build_stage_metrics_failure_and_move_fail():
     events = [
         {

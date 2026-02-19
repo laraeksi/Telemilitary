@@ -1,3 +1,5 @@
+<!-- Test plan and steps. -->
+<!-- Lists manual and automated tests. -->
 # Test Plan (CW1)
 
 ## Manual end-to-end scenario (CW1 minimum)
@@ -9,6 +11,8 @@ Steps:
 3. Quit to menu.
 4. Open the designer dashboard.
 5. Verify the funnel metrics are visible.
+<!-- Record evidence after step 5 -->
+<!-- Add timestamps to evidence notes -->
 
 Expected results:
 - Stage 1 completion is recorded.
@@ -20,6 +24,7 @@ Evidence:
 ## Automated tests
 Run from `backend/` (with requirements installed):
 - `python -m pytest`
+<!-- Capture output for the report -->
 
 Current automated coverage:
 - telemetry validation (missing fields, invalid event types, invalid fail reason)

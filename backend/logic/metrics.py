@@ -1,3 +1,5 @@
+# Computes metrics for dashboards and reports.
+# Aggregates telemetry into per-stage stats.
 import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -6,6 +8,7 @@ from data.db import get_connection
 from models import EventType
 
 
+# Parse ISO timestamps into datetime objects.
 def _parse_time(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
@@ -17,13 +20,17 @@ def _parse_time(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+# Compute a mean value or None if empty.
 def _mean(values: List[float]) -> Optional[float]:
+    # Average helper used across metrics.
     return sum(values) / len(values) if values else None
 
 
+# Compute a median value or None if empty.
 def _median(values: List[float]) -> Optional[float]:
     if not values:
         return None
+    # Sort a copy to avoid mutating input.
     sorted_values = sorted(values)
     mid = len(sorted_values) // 2
     if len(sorted_values) % 2 == 1:
@@ -31,7 +38,9 @@ def _median(values: List[float]) -> Optional[float]:
     return (sorted_values[mid - 1] + sorted_values[mid]) / 2
 
 
+# Pull a numeric field from a payload using multiple keys.
 def _extract_number(payload: Dict[str, Any], keys: List[str]) -> Optional[float]:
+    # Read numeric values from multiple possible keys.
     for key in keys:
         if key in payload and payload[key] is not None:
             try:
@@ -41,11 +50,13 @@ def _extract_number(payload: Dict[str, Any], keys: List[str]) -> Optional[float]
     return None
 
 
+# Load valid events filtered by config/time.
 def _load_events(
     config_id: Optional[str] = None,
     from_ts: Optional[str] = None,
     to_ts: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
+    # Only load validated events for analytics.
     query = "SELECT * FROM events WHERE 1=1 AND is_valid = 1"
     params: List[Any] = []
     if config_id:
@@ -82,11 +93,13 @@ def _load_events(
     return events
 
 
+# Aggregate raw events into per-stage statistics.
 def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[str, Any]], Dict[int, List[Dict[str, Any]]]]:
     stats: Dict[int, Dict[str, Any]] = {}
     session_stage_events: Dict[Tuple[str, int], List[Dict[str, Any]]] = {}
 
     for event in events:
+        # Group events per stage and session.
         stage_id = event.get("stage_id")
         if stage_id is None:
             continue
@@ -127,6 +140,7 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
         session_stage_events.setdefault((session_id, stage_id), []).append(event)
 
         if event["event_type"] == EventType.STAGE_FAIL.value:
+            # Track fail reasons and remaining resources.
             payload = event.get("payload", {})
             time_remaining = _extract_number(payload, ["time_remaining", "timeRemaining"])
             if time_remaining is not None:
@@ -147,6 +161,7 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
                 stats[stage_id]["moves_used"].append(moves_used)
 
     for (session_id, stage_id), stage_events in session_stage_events.items():
+        # Sort events by timestamp to compute durations.
         stage_events = sorted(
             stage_events, key=lambda e: _parse_time(e.get("timestamp")) or datetime.min
         )
@@ -212,6 +227,7 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
     return stats, {stage_id: stats[stage_id]["session_records"] for stage_id in stats}
 
 
+# Build funnel metrics for a config.
 def get_funnel_metrics(config_id: str, from_ts: Optional[str] = None, to_ts: Optional[str] = None):
     events = _load_events(config_id, from_ts, to_ts)
     stage_stats, _ = _build_stage_metrics(events)
@@ -219,6 +235,7 @@ def get_funnel_metrics(config_id: str, from_ts: Optional[str] = None, to_ts: Opt
     stage_ids = sorted(stage_stats.keys())
 
     for index, stage_id in enumerate(stage_ids):
+        # Compute funnel counts for each stage.
         starts = stage_stats[stage_id]["stage_starts"]
         completes = stage_stats[stage_id]["stage_completes"]
         fails = stage_stats[stage_id]["stage_fails"]
@@ -249,6 +266,7 @@ def get_funnel_metrics(config_id: str, from_ts: Optional[str] = None, to_ts: Opt
     return {"config_id": config_id, "stages": stages}
 
 
+# Build detailed stage stats for a config.
 def get_stage_stats(config_id: str, from_ts: Optional[str] = None, to_ts: Optional[str] = None):
     events = _load_events(config_id, from_ts, to_ts)
     stage_stats, _ = _build_stage_metrics(events)
@@ -332,6 +350,7 @@ def get_stage_stats(config_id: str, from_ts: Optional[str] = None, to_ts: Option
     return {"config_id": config_id, "stats": stage_stats_output}
 
 
+# Build progression curves for time and tokens.
 def get_progression_metrics(config_id: str, from_ts: Optional[str] = None, to_ts: Optional[str] = None):
     stage_data = get_stage_stats(config_id, from_ts, to_ts)["stats"]
     progression = []
@@ -348,6 +367,7 @@ def get_progression_metrics(config_id: str, from_ts: Optional[str] = None, to_ts
     return {"config_id": config_id, "stages": progression}
 
 
+# Split records by top/bottom percentile of a key.
 def _segment_records_by_percent(records: List[Dict[str, Any]], key: str, top: bool) -> List[Dict[str, Any]]:
     filtered = [record for record in records if record.get(key) is not None]
     if not filtered:
@@ -359,6 +379,7 @@ def _segment_records_by_percent(records: List[Dict[str, Any]], key: str, top: bo
     return filtered[-cutoff:] if top else filtered[:cutoff]
 
 
+# Compute completion rate for a segment.
 def _segment_completion_rate(records: List[Dict[str, Any]]) -> float:
     if not records:
         return 0.0
@@ -366,6 +387,7 @@ def _segment_completion_rate(records: List[Dict[str, Any]]) -> float:
     return completed / len(records)
 
 
+# Compute move-fail ratio for a segment.
 def _segment_move_fail_ratio(records: List[Dict[str, Any]]) -> float:
     failures = [record for record in records if record.get("failed")]
     if not failures:
@@ -376,6 +398,7 @@ def _segment_move_fail_ratio(records: List[Dict[str, Any]]) -> float:
     return move_fails / len(failures)
 
 
+# Build fairness metrics between segments.
 def get_fairness_metrics(
     segment: str, config_id: str, from_ts: Optional[str] = None, to_ts: Optional[str] = None
 ):
@@ -456,6 +479,7 @@ def get_fairness_metrics(
     }
 
 
+# Compare metrics across configs.
 def get_compare_metrics(config_ids, from_ts: Optional[str] = None, to_ts: Optional[str] = None):
     stage_map: Dict[int, Dict[str, Any]] = {}
     for config_id in config_ids:

@@ -1,4 +1,6 @@
 from __future__ import annotations
+# Auth routes for registering and logging in designers.
+# Handles register/login/logout helpers.
 
 import uuid
 from datetime import datetime
@@ -22,6 +24,7 @@ PASSWORD_RULES = [
 ]
 
 
+# Shared password validation helper.
 def validate_password(password: str) -> str | None:
     if len(password) < 8:
         return "Password must be at least 8 characters."
@@ -34,16 +37,20 @@ def validate_password(password: str) -> str | None:
     return None
 
 
+# Simple health check endpoint.
 @bp.get("/api/health")
 def health():
     # Simple health check to confirm the backend is running
+    # Useful for deployment checks.
     return {"ok": True}
 
 
+# Register a new designer account.
 @bp.post("/api/auth/register")
 def register():
     # Creates a new user account (stored in SQLite)
     body = request.get_json() or {}
+    # Trim username to avoid extra spaces.
     username = (body.get("username") or "").strip()
     password = body.get("password") or ""
 
@@ -61,6 +68,7 @@ def register():
             },
         )
 
+    # Generate a short user id prefix.
     user_id = f"u_{uuid.uuid4().hex[:8]}"
     created_at = datetime.utcnow().isoformat() + "Z"
     password_hash = generate_password_hash(password)
@@ -84,6 +92,7 @@ def register():
     }, 201
 
 
+# Login a designer account.
 @bp.post("/api/auth/login")
 def login():
     # Validates username/password and returns user_id + role
@@ -111,12 +120,14 @@ def login():
     }
 
 
+# No-op logout endpoint for frontend.
 @bp.post("/api/auth/logout")
 def logout():
     # Frontend logout hook (no server-side session to clear)
     return {"ok": True}
 
 
+# Return current user identity (best-effort).
 @bp.get("/api/me")
 def me():
     # Returns current user identity (best-effort):

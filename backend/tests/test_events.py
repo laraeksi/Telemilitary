@@ -1,5 +1,8 @@
+# Tests for telemetry validation rules.
+# Focuses on missing/invalid fields.
 from logic.telemetry import validate_event
 
+# Build a minimal valid stage_start event.
 def make_valid_stage_start():
     """
     Helper to build a minimal valid event.
@@ -21,6 +24,7 @@ def make_valid_stage_start():
         },
     }
 
+# Build an invalid stage_fail event.
 def make_invalid_stage_fail():
     """
     Build a stage_fail event with an incorrect fail reason
@@ -43,12 +47,15 @@ def make_invalid_stage_fail():
     }
 
 
+# Empty event should be invalid.
 def test_missing_all_fields_marks_invalid():
     """Completely empty event should be marked invalid."""
+    # Empty payload should fail required field checks.
     result = validate_event({})
     assert result["is_valid"] is False
 
 
+# Missing required field should be flagged.
 def test_missing_required_top_level_field():
     """
     Verify that when a single required top-level field is missing
@@ -67,6 +74,7 @@ def test_missing_required_top_level_field():
     ]
     assert any(a["details"].get("field") == "user_id" for a in missing_field_anomalies)
 
+# Incorrect fail reason should be flagged.
 def test_incorrect_fail_reason():
     """
     Verify that when a the fail reason is NOT one of the accepted reasons
@@ -93,8 +101,10 @@ def test_incorrect_fail_reason():
     )
 
 
+# Unknown event type should be flagged.
 def test_invalid_event_type_is_flagged():
     event = make_valid_stage_start()
+    # Force an invalid event type.
     event["event_type"] = "made_up_event"
     result = validate_event(event)
     assert result["is_valid"] is False
@@ -104,6 +114,7 @@ def test_invalid_event_type_is_flagged():
     )
 
 
+# Missing payload fields should be flagged.
 def test_missing_payload_fields_for_stage_start():
     event = make_valid_stage_start()
     event["payload"].pop("timer_seconds")

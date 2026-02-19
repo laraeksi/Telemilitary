@@ -1,3 +1,5 @@
+# Suggests balancing changes and simulates effects.
+# Uses rules derived from telemetry stats.
 import json
 from typing import Any, Dict, List
 
@@ -6,17 +8,22 @@ from logic.metrics import get_fairness_metrics, get_stage_stats
 from models import EventType
 
 
+# Clamp values to a given range.
 def _clamp(value: float, min_value: float = 0.0, max_value: float = 1.0) -> float:
+    # Keep values in [min, max].
     return max(min_value, min(value, max_value))
 
 
+# Generate balancing suggestions from metrics.
 def get_suggestions(config_id: str):
     stage_stats = get_stage_stats(config_id)["stats"]
     fairness = get_fairness_metrics("fast_vs_slow", config_id)["stages"]
+    # Map fairness metrics by stage for quick lookup.
     fairness_by_stage = {item["stage_id"]: item for item in fairness}
     suggestions: List[Dict[str, Any]] = []
 
     for stage in stage_stats:
+        # Evaluate rule triggers per stage.
         stage_id = stage["stage_id"]
         fairness_gap = fairness_by_stage.get(stage_id, {}).get("fairness_gap", 0.0)
         dropoff = stage.get("dropoff_to_next")
@@ -102,6 +109,7 @@ def get_suggestions(config_id: str):
     return {"config_id": config_id, "suggestions": suggestions}
 
 
+# Sum helper cost deltas for validation.
 def _sum_cost_deltas(change: Dict[str, Any]) -> int:
     total = 0
     for key, value in change.items():
@@ -119,7 +127,9 @@ def _sum_cost_deltas(change: Dict[str, Any]) -> int:
     return total
 
 
+# Convert deltas into a small effect value.
 def _simulation_effect(timer_delta: int, move_delta: int) -> float:
+    # Convert deltas into a small completion-rate shift.
     effect = (timer_delta * 0.004) + (move_delta * 0.02)
     if effect == 0 and (timer_delta != 0 or move_delta != 0):
         if timer_delta != 0:
@@ -129,6 +139,7 @@ def _simulation_effect(timer_delta: int, move_delta: int) -> float:
     return effect
 
 
+# Simulate a balance change without mutating data.
 def simulate_balance_change(payload):
     config_id = payload.get("config_id", "balanced")
     changes = payload.get("changes") or []
@@ -195,7 +206,9 @@ def simulate_balance_change(payload):
             elif event_type == EventType.QUIT.value:
                 quits += 1
 
+        # If no starts exist, return a heuristic adjustment.
         if starts == 0:
+            # No data to simulate; return heuristic only.
             timer_delta = int(change.get("timer_seconds_delta") or 0)
             move_delta = int(change.get("move_limit_delta") or 0)
 

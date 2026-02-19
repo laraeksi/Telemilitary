@@ -1,3 +1,5 @@
+# Validates telemetry event shapes and values.
+# Returns anomalies for invalid payloads.
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -16,10 +18,12 @@ REQUIRED_FIELDS = [
 ]
 
 
+# Validate a telemetry event and return anomalies.
 def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
     anomalies: List[Dict[str, Any]] = []
     event_id = event.get("event_id", "unknown")
 
+    # Helper to append a structured anomaly record.
     def add_anomaly(anomaly_id: str, anomaly_type: str, detected_by: str, details: Dict[str, Any]):
         anomalies.append(
             {
@@ -33,6 +37,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             }
         )
 
+    # Check basic envelope fields first.
     for field in REQUIRED_FIELDS:
         if event.get(field) is None:
             add_anomaly(
@@ -42,6 +47,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
                 {"field": field},
             )
 
+    # Ensure event_type is one of the known values.
     event_type = event.get("event_type")
     if event_type not in [t.value for t in EventType]:
         add_anomaly(
@@ -51,6 +57,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             {"event_type": event_type},
         )
 
+    # Stage id must be between 1 and 10.
     stage_id = event.get("stage_id")
     if stage_id is None or not isinstance(stage_id, (int, float)) or not (1 <= int(stage_id) <= 10):
         add_anomaly(
@@ -60,6 +67,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             {"stage_id": stage_id},
         )
 
+    # Config id must match the enum.
     config_id = event.get("config_id")
     if config_id not in [c.value for c in ConfigId]:
         add_anomaly(
@@ -69,6 +77,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             {"config_id": config_id},
         )
 
+    # Payload must be a dict for field validation.
     payload = event.get("payload")
     if not isinstance(payload, dict):
         add_anomaly(
@@ -79,6 +88,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
         )
         return {"is_valid": len(anomalies) == 0, "anomalies": anomalies}
 
+    # Payload requirements by event type.
     required_payload_fields = {
         EventType.SESSION_START.value: ["started_at"],
         EventType.SESSION_END.value: ["ended_at", "outcome"],

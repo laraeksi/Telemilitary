@@ -1,5 +1,8 @@
+/* Shared layout styles for pages and panels. */
+/* Used by menus and form layouts. */
 .page {
   min-height: 100vh;
+  /* Full page height */
   padding: 32px 18px 48px;
   display: flex;
   align-items: center;
@@ -17,6 +20,7 @@
   background: var(--surface);
   border-radius: 24px;
   padding: 32px;
+  /* Subtle separation */
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
@@ -53,6 +57,7 @@
   margin-top: 16px;
 }
 
+/* Simple vertical stack helper */
 .stack {
   display: grid;
   gap: 12px;
@@ -60,6 +65,7 @@
 
 .form {
   display: grid;
+  /* Simple vertical spacing */
   gap: 16px;
 }
 

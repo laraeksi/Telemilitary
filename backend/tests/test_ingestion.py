@@ -1,15 +1,20 @@
+# Tests that ingestion stores valid events.
+# Ensures payloads are persisted to DB.
 from app import create_app
 from config import Config
 from data.db import get_connection
 
 
+# Ingestion should store a valid event.
 def test_event_ingestion_stores_event(tmp_path, monkeypatch):
     db_path = tmp_path / "test_ingestion.db"
+    # Point Config to temp DB for isolation.
     monkeypatch.setattr(Config, "DB_PATH", str(db_path))
 
     app = create_app()
     client = app.test_client()
 
+    # Minimal valid stage_start payload.
     payload = {
         "event_id": "test_ev_001",
         "timestamp": "2026-02-12T12:00:00Z",

@@ -1,3 +1,5 @@
+// Difficulty selection page for the player.
+// Saves the chosen difficulty before starting the game.
 import { useNavigate } from "react-router-dom";
 import { trackEvent } from "../telemetry/events";
 
@@ -11,11 +13,13 @@ export default function DifficultySelect() {
         // start at stage 1 for telemetry defaults
         localStorage.setItem("stage_Id", "1");
 
+        // Log difficulty selection to telemetry.
         trackEvent("settings_change", {
             stageId:1,
             setting_key: "difficulty",
             setting_value: configId
         });
+        // Move into the game view.
         navigate("/game");
     }
 
@@ -27,6 +31,7 @@ export default function DifficultySelect() {
             <p className="hero__subtitle">Prototype: 2 stages per difficulty</p>
 
             <div className="action-row">
+                {/* Quick buttons for difficulty */}
                 <button type="button" onClick={() => choose("easy")}>Easy</button>
                 <button type="button" onClick={() => choose("balanced")}>Balanced</button>
                 <button type="button" onClick={() => choose("hard")}>Hard</button>

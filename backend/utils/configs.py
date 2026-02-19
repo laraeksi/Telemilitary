@@ -1,3 +1,5 @@
+# Loads config data from SQLite.
+# Builds nested config payloads.
 # utils/configs.py
 # Helper functions for reading game configuration data from the database
 
@@ -6,6 +8,7 @@ from __future__ import annotations
 from data.db import get_connection
 
 
+# Fetch all configs and expand helpers/token rules.
 def fetch_configs() -> list:
     # Fetches all configs (easy / balanced / hard) with their stages, token rules and helpers.
     # Builds a nested structure suitable for frontend and dashboard use.
@@ -22,6 +25,7 @@ def fetch_configs() -> list:
     helpers_by_stage: dict[tuple[str, int], dict] = {}
     tokens_by_stage: dict[tuple[str, int], dict] = {}
 
+    # Build lookup tables for helpers/tokens.
     # Group token rules by (config_id, stage_id)
     for token in token_rows:
         key = (token["config_id"], token["stage_id"])
@@ -76,6 +80,7 @@ def fetch_configs() -> list:
     return configs
 
 
+# Return a single config by id.
 def get_config(config_id: str) -> dict | None:
     for config in fetch_configs():
         if config["config_id"] == config_id:
@@ -83,6 +88,7 @@ def get_config(config_id: str) -> dict | None:
     return None
 
 
+# Return all config ids.
 def get_config_ids() -> list[str]:
     with get_connection() as conn:
         rows = conn.execute("SELECT config_id FROM configs ORDER BY config_id").fetchall()

@@ -1,15 +1,20 @@
+<!-- How to run and deploy the project. -->
+<!-- Covers dev and production steps. -->
 # Deployment Guide (CW1)
 
 ## Overview
 This guide covers local development and production deployment for the memory match game, telemetry API, and dashboard.
 The frontend calls `/api/*` endpoints, so production deployment must either proxy `/api` to the backend or build the
 frontend with an explicit API base URL.
+<!-- Keep API paths consistent across envs -->
 
 ## Prerequisites
 - Python 3.11+
 - Node 18+
 
 ## Local development (current setup)
+<!-- These steps assume a fresh clone with no deps installed. -->
+<!-- Use two terminals for backend and client -->
 
 ### Backend (Flask)
 1. Open a terminal and go to `backend/`

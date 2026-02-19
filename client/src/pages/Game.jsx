@@ -1,3 +1,5 @@
+// Main game loop and UI logic for a play session.
+// Handles timers, state updates, and telemetry events.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { endSession, startSession, trackEvent } from "../telemetry/events";
@@ -49,12 +51,14 @@ function Game() {
   const [failReason, setFailReason] = useState(null);
 
   useEffect(() => {
+    // Start telemetry session when game mounts.
     startSession(configId);
     setTokens(stages[0]?.startTokens ?? stage.startTokens);
   }, [configId]);
 
   // Reset when stage changes
   useEffect(() => {
+    // Reset stage state for new level.
     setDeck(buildDeck(stage));
     setFlippedUids([]);
     setMatchedUids(new Set());
@@ -95,6 +99,7 @@ function Game() {
     if (!timerRunning) return;
 
     const interval = setInterval(() => {
+      // Freeze timer while freeze powerup is active.
       if (Date.now() < freezeUntil) return;
       setTimeRemaining((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
@@ -152,6 +157,7 @@ function Game() {
     if (!timerRunning) setTimerRunning(true);
 
     
+    // Track which card index was flipped for telemetry.
     const cardIndex = deck.findIndex((card) => card.uid === uid);
     trackEvent("card_flip", {
       stageId: stage.stageId,
@@ -224,6 +230,7 @@ function Game() {
   // stage complete
   useEffect(() => {
     if (status !== "playing") return;
+    // All cards matched means stage win.
     if (deck.length > 0 && matchedUids.size === deck.length) {
       setStatus("won");
       const updatedTokensEarned = tokensEarned + stage.stageWinTokens;

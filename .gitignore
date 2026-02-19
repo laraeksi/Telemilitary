@@ -1,3 +1,5 @@
+# Ignore generated files for Python/Node.
+# Keep repo clean of build artifacts.
 # ===============================
 # Python
 # ===============================
@@ -43,5 +45,6 @@ yarn-error.log*
 # OS files
 # ===============================
 
+# Windows/macOS junk files
 .DS_Store
 Thumbs.db

@@ -1,3 +1,5 @@
+# Metrics endpoints powering the dashboard.
+# Aggregates telemetry into charts.
 # routes/metrics.py
 # Designer-only analytics endpoints built from aggregated telemetry data
 
@@ -21,9 +23,11 @@ from utils.errors import error_response
 bp = Blueprint("metrics", __name__)
 
 
+# Funnel metrics endpoint.
 @bp.get("/api/metrics/funnel")
 def funnel():
     # Returns stage-by-stage completion and drop-off data
+    # Requires designer access.
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -39,6 +43,7 @@ def funnel():
     )
 
 
+# Stage stats metrics endpoint.
 @bp.get("/api/metrics/stage-stats")
 def stage_stats():
     # Returns per-stage difficulty statistics (fail rate, time, etc.)
@@ -46,6 +51,7 @@ def stage_stats():
     if auth_error:
         return auth_error
 
+    # Default to balanced if none provided.
     config_id = request.args.get("config_id", "balanced")
     if config_id not in [c.value for c in ConfigId]:
         return error_response("config_id is invalid", details={"field": "config_id"})
@@ -61,6 +67,7 @@ def stage_stats():
     }
 
 
+# Progression metrics endpoint.
 @bp.get("/api/metrics/progression")
 def progression():
     # Returns progression curves (time and resource accumulation)
@@ -79,6 +86,7 @@ def progression():
     )
 
 
+# Fairness metrics endpoint.
 @bp.get("/api/metrics/fairness")
 def fairness():
     # Compares metrics across inferred player segments
@@ -86,6 +94,7 @@ def fairness():
     if auth_error:
         return auth_error
 
+    # Segment can be "fast_vs_slow" or "high_vs_low".
     segment = request.args.get("segment", "all")
     config_id = request.args.get("config_id", "balanced")
     if config_id not in [c.value for c in ConfigId]:
@@ -99,6 +108,7 @@ def fairness():
     )
 
 
+# Compare metrics across configs.
 @bp.get("/api/metrics/compare")
 def compare():
     # Compares multiple configs (e.g. easy vs balanced vs hard)

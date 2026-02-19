@@ -1,9 +1,12 @@
+<!-- Team report draft for CW1. -->
+<!-- Working draft used for coursework. -->
 # Project Report (Team Explanation Draft)
 
 ## What we built (prototype scope)
 **Playable game**
 - Browser memory match game with multiple stages (prototype currently covers stage 1–2 in gameplay logic).
 - Core mechanics: timed play, move limits, matching pairs, powerups (peek/freeze/undo).
+<!-- Keep bullets short for report formatting -->
 
 **Telemetry pipeline**
 - Client emits structured events for sessions, stages, matches, resources, powerups, and failures.
@@ -29,6 +32,7 @@
 - Decision log endpoint (recording changes + rationale)
 
 ## What is not yet built (CW2 scope)
+<!-- This list will expand for CW2 -->
 - Full 10+ stage gameplay experience in the client.
 - Full telemetry dataset size (1500+ events, 80+ sessions, 40+ users).
 - Advanced designer parameter editor (UI for editing stage configs directly).
@@ -47,6 +51,7 @@
 - Game UI/state
 - Telemetry capture (events)
 - Dashboard UI
+<!-- Server section below -->
 
 **Server (Flask + SQLite)**
 - Ingest and validate events

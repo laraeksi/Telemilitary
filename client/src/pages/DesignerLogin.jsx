@@ -1,3 +1,5 @@
+// This page shows the designer login form and calls the API.
+// Uses local state and calls /api/auth/login.
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { apiUrl } from "../api/base";
@@ -11,17 +13,21 @@ function DesignerLogin() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    // Clear any previous error state.
     setError("");
 
+    // Quick local fallback for the demo account.
     const TEST_USERNAME = "designer";
     const TEST_PASSWORD = "1234";
 
+    // Allow a hard-coded demo login.
     if (username === TEST_USERNAME && password === TEST_PASSWORD) {
       navigate("/dashboard");
       return;
     }
 
     try {
+      // Attempt real backend login.
       const res = await fetch(apiUrl("/api/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -33,6 +39,7 @@ function DesignerLogin() {
 
       const data = await res.json().catch(() => null);
 
+      // Navigate only on a successful login response.
       if (res.ok && data?.ok) {
         navigate("/dashboard");
         return;

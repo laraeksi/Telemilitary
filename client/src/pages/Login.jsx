@@ -1,3 +1,5 @@
+// Simple role picker with a designer password.
+// Calls parent onLogin with chosen role.
 import { useState } from "react";
 import "../styles/login.css";
 
@@ -8,9 +10,11 @@ function Login({ onLogin }) {
   const [error, setError] = useState("");
 
   function handleContinue() {
+    // Parent decides what counts as a valid login.
     const result = onLogin({ role, password });
 
     if (!result.success) {
+      // Show a friendly error message.
       setError(result.message || "Access denied");
     }
   }
@@ -30,6 +34,7 @@ function Login({ onLogin }) {
             value="player"
             checked={role === "player"}
             onChange={() => {
+              // Switch to player mode.
               setRole("player");
               setError("");
             }}
@@ -45,6 +50,7 @@ function Login({ onLogin }) {
             value="designer"
             checked={role === "designer"}
             onChange={() => {
+              // Switch to designer mode.
               setRole("designer");
               setError("");
             }}
@@ -69,6 +75,7 @@ function Login({ onLogin }) {
 
       {error && <p className="login__error">{error}</p>}
 
+      {/* Disable designer continue without password. */}
       <button
         type="button"
         onClick={handleContinue}

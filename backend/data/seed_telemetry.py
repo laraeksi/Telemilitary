@@ -1,4 +1,5 @@
-
+# Seeds fake telemetry data for demos/tests.
+# Used to populate demo dashboards.
 import json
 import random
 from datetime import datetime, timedelta
@@ -8,13 +9,16 @@ from models import ConfigId, EventType
 
 
  #Seed telemetry only if events table is empty, don't want to insert duplicate telemetry every time the server restarts
+# Seed telemetry only if table is empty.
 def seed_telemetry_if_empty(conn):
     row = conn.execute("SELECT COUNT(*) as c FROM events").fetchone()
+    # Avoid duplicating demo data.
     if row and row["c"] > 0:
         return
     seed_telemetry(conn)
 
 
+# Insert deterministic demo telemetry data.
 def seed_telemetry(conn):
     """
     Sprint 1 seeded telemetry dataset:
@@ -25,15 +29,20 @@ def seed_telemetry(conn):
     - Seeds a few decisions and a few anomalies
     """
     rng = random.Random(20260211)  # deterministic seed
+    # Base timestamp for seeded sessions.
     base_time = datetime(2026, 2, 1, 12, 0, 0)
 
-    users = [f"u_{i:03d}" for i in range(1, 40)] # Pseudonymous user IDs- no real personal data
+    # Pseudonymous user IDs (no real personal data).
+    users = [f"u_{i:03d}" for i in range(1, 40)]
+    # Rotate through difficulty configs.
     configs = [ConfigId.EASY.value, ConfigId.BALANCED.value, ConfigId.HARD.value]
 
+    # Number of demo sessions to seed.
     session_count = 120
 
     for i in range(session_count):
-        session_id = f"s_{i+1:04d}"  # Create  session IDs like s_0001, s_0002
+        # Create session IDs like s_0001, s_0002.
+        session_id = f"s_{i+1:04d}"
         user_id = rng.choice(users) # Picks a user at random 
         config_id = configs[i % 3]
         # Config-dependent behaviour (makes compare charts meaningful)
@@ -411,6 +420,7 @@ def seed_telemetry(conn):
     seed_intentional_anomalies(conn, base_time)
 
 
+# Build an event dict for seeding.
 def build_event(event_id, session_id, user_id, ts, stage_id, config_id, event_type, payload):
     return {
         "event_id": event_id,
@@ -424,6 +434,7 @@ def build_event(event_id, session_id, user_id, ts, stage_id, config_id, event_ty
     }
 
 
+# Insert an event and log anomalies.
 def insert_event(conn, event):
     """
     Insert an event into DB while:
@@ -500,6 +511,7 @@ def insert_event(conn, event):
         )
 
 
+# Insert demo decision log entries.
 def seed_decisions(conn, base_time):
     """
     Seed a few decisions for Sprint 1 (CW2 will scale to 30).
@@ -525,6 +537,7 @@ def seed_decisions(conn, base_time):
     )
 
 
+# Insert invalid events for testing.
 def seed_intentional_anomalies(conn, base_time):
     """
     Seed a few intentionally invalid events to demonstrate data quality checks.
