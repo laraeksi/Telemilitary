@@ -1,14 +1,13 @@
 // Single memory-card button with flip behavior.
 // Also handles keyboard activation.
-function Card({ imgSrc, alt, flipped, matched, onFlip }) {
-  // Treat matched cards as permanently flipped.
+function Card({ imgSrc, alt, flipped, matched, shaking, ghostFlipped, onFlip }) {
   const isFlipped = flipped || matched;
+  const isGhost = !isFlipped && ghostFlipped;
 
   return (
     <button
       type="button"
-      // Use "flipped" class to trigger CSS rotation.
-      className={`card ${isFlipped ? "flipped" : ""}`}
+      className={`card ${isFlipped ? "flipped" : ""} ${matched ? "matched" : ""} ${shaking ? "shaking" : ""} ${isGhost ? "ghost" : ""}`}
       onClick={onFlip}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
