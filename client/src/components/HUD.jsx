@@ -1,6 +1,16 @@
 // Heads-up display for game status numbers.
 // Shows difficulty, time, moves, and tokens.
-function HUD({ configId, stageId, timeRemaining, movesRemaining, tokens }) {
+function HUD({ 
+  configId,
+   stageId, 
+   timeRemaining,
+    movesRemaining, 
+    tokens,
+    freezeActive,
+    streakCount = 0,
+    freeHintCharges = 0,
+    streakBonusTokens = 0,
+ }) {
   return (
     <section className="hud">
       {/* Basic status readout */}
