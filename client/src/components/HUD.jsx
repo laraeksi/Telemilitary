@@ -11,10 +11,12 @@ function HUD({
     freeHintCharges = 0,
     streakBonusTokens = 0,
  }) {
+   const isLowTime = timeRemaining > 0 && timeRemaining <= 15 && !freezeActive;
+   const streakProgress = Math.max(0, Math.min(5, streakCount));
   return (
     <section className="hud">
-      {/* Basic status readout */}
-      {/* Stage number for the current level */}
+      <div className="hud__item">Stage: {stageId}</div>
+      <div className="hud__item">Difficulty: {configId}</div> 
       <div className="hud__item">Stage: {stageId}</div>
       {/* Current difficulty config */}
       <div className="hud__item">Difficulty: {configId}</div>
