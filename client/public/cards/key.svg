@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Key card</title>
+  <desc id="desc">Clean key icon on a bordered card.</desc>
+  <rect x="12" y="12" width="232" height="232" rx="36" fill="#fffaf4" stroke="#dccfbe" stroke-width="8"/>
+  <circle cx="128" cy="128" r="72" fill="#dff5f6"/>
+  <circle cx="96" cy="128" r="28" fill="none" stroke="#e1b555" stroke-width="14"/>
+  <path d="M122 128h66v14h-16v18h-14v-18h-14v8h-14v-22Z" fill="#e1b555"/>
+  <circle cx="96" cy="128" r="8" fill="#fff7e0"/>
+</svg>

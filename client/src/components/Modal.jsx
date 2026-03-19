@@ -1,6 +1,6 @@
 // Simple modal wrapper with inline styles.
 // Used for win/lose and consent dialogs.
-function Modal({ title, children }) {
+function Modal({ title, children, className = "" }) {
   return (
     <div
       role="dialog"
@@ -19,11 +19,11 @@ function Modal({ title, children }) {
     >
       {/* Modal content container */}
       <div
+        className={`modal-content ${className}`.trim()}
         style={{
           background: "white",
-          color: "#111",            //FORCE TEXT COLOR
+          color: "#111",
           borderRadius: 14,
-          // Keep content readable on small screens.
           padding: 24,
           width: "min(520px, 100%)",
         }}

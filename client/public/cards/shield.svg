@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Shield card</title>
+  <desc id="desc">Black shield silhouette on a transparent background.</desc>
+  <path fill="#000" d="M256 26c45 37 102 56 171 56v121c0 133-68 227-171 283C153 430 85 336 85 203V82c69 0 126-19 171-56Zm0 78c-38 26-82 40-131 43v52c0 96 45 167 131 221 86-54 131-125 131-221v-52c-49-3-93-17-131-43Zm-17 77h34v56h56v34h-56v56h-34v-56h-56v-34h56v-56Z"/>
+</svg>

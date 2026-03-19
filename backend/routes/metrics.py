@@ -15,7 +15,7 @@ from logic.metrics import (
     get_stage_stats,
 )
 from models import ConfigId
-from utils.auth import require_designer
+from utils.auth import require_dashboard
 from utils.configs import get_config_ids
 from utils.errors import error_response
 
@@ -28,7 +28,7 @@ bp = Blueprint("metrics", __name__)
 def funnel():
     # Returns stage-by-stage completion and drop-off data
     # Requires designer access.
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
@@ -47,7 +47,7 @@ def funnel():
 @bp.get("/api/metrics/stage-stats")
 def stage_stats():
     # Returns per-stage difficulty statistics (fail rate, time, etc.)
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
@@ -71,7 +71,7 @@ def stage_stats():
 @bp.get("/api/metrics/progression")
 def progression():
     # Returns progression curves (time and resource accumulation)
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
@@ -90,7 +90,7 @@ def progression():
 @bp.get("/api/metrics/fairness")
 def fairness():
     # Compares metrics across inferred player segments
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
@@ -112,7 +112,7 @@ def fairness():
 @bp.get("/api/metrics/compare")
 def compare():
     # Compares multiple configs (e.g. easy vs balanced vs hard)
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 

@@ -207,7 +207,6 @@ def simulate_balance_change(payload):
         move_delta = int(change.get("move_limit_delta") or 0)
         _sum_cost_deltas(change)  # not factored into the simulation, only validated.
 
-
         # Track converted fail sources using the original proportional model.
         converted_from_time = 0
         converted_from_moves = 0
@@ -252,7 +251,9 @@ def simulate_balance_change(payload):
                 "failure_rate": failure_rate,
                 "quit_rate": quit_rate,
             }
-            notes.append("A small extra adjustment was added so lighter changes still show up in the estimate.")
+            notes.append(
+                "A small extra adjustment was added so lighter changes still show up in the estimate."
+            )
 
         results.append(
             {

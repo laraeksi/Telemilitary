@@ -1,6 +1,6 @@
 // Action buttons for in-game power-ups.
 // Disables buttons when tokens are low.
-import{playClick} from "../audio/sounds";
+import { playClick } from "../audio/sounds";
 
 function Controls({ onPeek, onFreeze, onUndo, onRetry, onQuit, costs, tokens }) {
   const withClick = (fn) => () => {
@@ -39,7 +39,7 @@ function Controls({ onPeek, onFreeze, onUndo, onRetry, onQuit, costs, tokens }) 
         <span className="controls__label">Undo</span>
         <span className="controls__meta">U • -{costs.undo}</span>
       </button>
-       <button type="button" onClick={withClick(onRetry)}>Retry</button>
+      <button type="button" onClick={withClick(onRetry)}>Retry</button>
       <button type="button" onClick={withClick(onQuit)}>Quit</button>
     </section>
   );

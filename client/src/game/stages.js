@@ -1,136 +1,522 @@
 // Difficulty configs for each stage.
 // Each config is an array of stage settings.
 // src/game/stages.js
+// 10 stages per difficulty (easy / balanced / hard).
+// Grid sizes are aligned with shared stage defaults (8,10,12,14,16,18,20,22,24,24 cards).
 export const DIFFICULTY_CONFIGS = {
   easy: [
-    // Stage 1 (2x4 = 8 cards = 4 pairs)
+    // Stage 1 (2x4 = 8 cards = 4 pairs) — easy: generous time and moves
     {
       stageId: 1,
       rows: 2,
       cols: 4,
-      // Time/move limits get easier on this config.
-      timeLimit: 55,     // seconds
-      moveLimit: 20,     // number of pair attempts
-      startTokens: 5,
-      stageWinTokens: 5,    // tokens awarded for completing the stage
-
-      // Economy / rules
-      rewardMatch: 1,          // tokens gained per match
-      penaltyMismatchTime: 2,  // seconds removed on mismatch
-
-      // Powerups (we’ll implement later)
-      // Costs in tokens for each helper.
+      timeLimit: 70,
+      moveLimit: 22,
+      startTokens: 6,
+      stageWinTokens: 5,
+      rewardMatch: 1,
+      penaltyMismatchTime: 2,
       powerupCosts: {
         peek: 2,
         freeze: 3,
         undo: 3,
       },
     },
-
-    // Stage 2 (3x4 = 12 cards = 6 pairs)
+    // Stage 2 (2x5 = 10 cards = 5 pairs)
     {
       stageId: 2,
-      rows: 3,
-      cols: 4,
-      timeLimit: 75,
+      rows: 2,
+      cols: 5,
+      timeLimit: 85,
       moveLimit: 28,
-      startTokens: 5,
+      startTokens: 6,
       stageWinTokens: 5,
-
       rewardMatch: 1,
       penaltyMismatchTime: 2,
-
       powerupCosts: {
         peek: 2,
         freeze: 3,
         undo: 3,
+      },
+    },
+    // Stage 3 (3x4 = 12 cards = 6 pairs)
+    {
+      stageId: 3,
+      rows: 3,
+      cols: 4,
+      timeLimit: 95,
+      moveLimit: 32,
+      startTokens: 6,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 2,
+      powerupCosts: {
+        peek: 2,
+        freeze: 3,
+        undo: 3,
+      },
+    },
+    // Stage 4 (2x7 = 14 cards = 7 pairs)
+    {
+      stageId: 4,
+      rows: 2,
+      cols: 7,
+      timeLimit: 105,
+      moveLimit: 36,
+      startTokens: 6,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 2,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 3,
+      },
+    },
+    // Stage 5 (4x4 = 16 cards = 8 pairs)
+    {
+      stageId: 5,
+      rows: 4,
+      cols: 4,
+      timeLimit: 115,
+      moveLimit: 40,
+      startTokens: 6,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 3,
+      },
+    },
+    // Stage 6 (3x6 = 18 cards = 9 pairs)
+    {
+      stageId: 6,
+      rows: 3,
+      cols: 6,
+      timeLimit: 120,
+      moveLimit: 44,
+      startTokens: 7,
+      stageWinTokens: 7,
+      rewardMatch: 1,
+      penaltyMismatchTime: 2,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 3,
+      },
+    },
+    // Stage 7 (4x5 = 20 cards = 10 pairs)
+    {
+      stageId: 7,
+      rows: 4,
+      cols: 5,
+      timeLimit: 125,
+      moveLimit: 48,
+      startTokens: 7,
+      stageWinTokens: 7,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 8 (2x11 = 22 cards = 11 pairs)
+    {
+      stageId: 8,
+      rows: 2,
+      cols: 11,
+      timeLimit: 130,
+      moveLimit: 52,
+      startTokens: 7,
+      stageWinTokens: 7,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 9 (4x6 = 24 cards = 12 pairs)
+    {
+      stageId: 9,
+      rows: 4,
+      cols: 6,
+      timeLimit: 135,
+      moveLimit: 56,
+      startTokens: 8,
+      stageWinTokens: 8,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 10 (4x6 = 24 cards = 12 pairs)
+    {
+      stageId: 10,
+      rows: 4,
+      cols: 6,
+      timeLimit: 140,
+      moveLimit: 60,
+      startTokens: 8,
+      stageWinTokens: 8,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
       },
     },
   ],
   balanced: [
-    // Stage 1 (2x4 = 8 cards = 4 pairs)
+    // Stage 1 (2x4 = 8 cards = 4 pairs) — balanced: between easy and hard
     {
       stageId: 1,
       rows: 2,
       cols: 4,
-      timeLimit: 40,     // seconds
-      moveLimit: 16,     // number of pair attempts
+      timeLimit: 55,
+      moveLimit: 18,
       startTokens: 5,
-      stageWinTokens: 5,    // tokens awarded for completing the stage
-
-      // Economy / rules
-      rewardMatch: 1,          // tokens gained per match
-      penaltyMismatchTime: 2,  // seconds removed on mismatch
-
-      // Powerups (we’ll implement later)
-      // Each value is a token cost.
+      stageWinTokens: 5,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
       powerupCosts: {
         peek: 2,
         freeze: 3,
         undo: 3,
       },
     },
-
-    // Stage 2 (3x4 = 12 cards = 6 pairs)
+    // Stage 2 (2x5 = 10 cards = 5 pairs)
     {
       stageId: 2,
-      rows: 3,
-      cols: 4,
-      timeLimit: 60,
-      moveLimit: 24,
+      rows: 2,
+      cols: 5,
+      timeLimit: 65,
+      moveLimit: 22,
       startTokens: 5,
       stageWinTokens: 5,
-
       rewardMatch: 1,
-      penaltyMismatchTime: 2,
-
+      penaltyMismatchTime: 3,
       powerupCosts: {
         peek: 2,
         freeze: 3,
         undo: 3,
+      },
+    },
+    // Stage 3 (3x4 = 12 cards = 6 pairs)
+    {
+      stageId: 3,
+      rows: 3,
+      cols: 4,
+      timeLimit: 72,
+      moveLimit: 26,
+      startTokens: 5,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 2,
+        freeze: 3,
+        undo: 3,
+      },
+    },
+    // Stage 4 (2x7 = 14 cards = 7 pairs)
+    {
+      stageId: 4,
+      rows: 2,
+      cols: 7,
+      timeLimit: 80,
+      moveLimit: 30,
+      startTokens: 5,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 3,
+      },
+    },
+    // Stage 5 (4x4 = 16 cards = 8 pairs)
+    {
+      stageId: 5,
+      rows: 4,
+      cols: 4,
+      timeLimit: 88,
+      moveLimit: 34,
+      startTokens: 5,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 3,
+      },
+    },
+    // Stage 6 (3x6 = 18 cards = 9 pairs)
+    {
+      stageId: 6,
+      rows: 3,
+      cols: 6,
+      timeLimit: 95,
+      moveLimit: 38,
+      startTokens: 5,
+      stageWinTokens: 7,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 3,
+      },
+    },
+    // Stage 7 (4x5 = 20 cards = 10 pairs)
+    {
+      stageId: 7,
+      rows: 4,
+      cols: 5,
+      timeLimit: 102,
+      moveLimit: 42,
+      startTokens: 5,
+      stageWinTokens: 7,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 8 (2x11 = 22 cards = 11 pairs)
+    {
+      stageId: 8,
+      rows: 2,
+      cols: 11,
+      timeLimit: 108,
+      moveLimit: 46,
+      startTokens: 5,
+      stageWinTokens: 7,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 9 (4x6 = 24 cards = 12 pairs)
+    {
+      stageId: 9,
+      rows: 4,
+      cols: 6,
+      timeLimit: 114,
+      moveLimit: 50,
+      startTokens: 5,
+      stageWinTokens: 8,
+      rewardMatch: 1,
+      penaltyMismatchTime: 3,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 10 (4x6 = 24 cards = 12 pairs)
+    {
+      stageId: 10,
+      rows: 4,
+      cols: 6,
+      timeLimit: 120,
+      moveLimit: 54,
+      startTokens: 5,
+      stageWinTokens: 8,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
       },
     },
   ],
   hard: [
-    // Stage 1 (2x4 = 8 cards = 4 pairs)
+    // Stage 1 (2x4 = 8 cards = 4 pairs) — hard: tight time and moves
     {
       stageId: 1,
       rows: 2,
       cols: 4,
-      timeLimit: 30,     // seconds
-      moveLimit: 12,     // number of pair attempts
-      startTokens: 5,
-      stageWinTokens: 5,    // tokens awarded for completing the stage
-
-      // Economy / rules
-      rewardMatch: 1,          // tokens gained per match
-      penaltyMismatchTime: 2,  // seconds removed on mismatch
-
-      // Powerups (we’ll implement later)
+      timeLimit: 40,
+      moveLimit: 14,
+      startTokens: 4,
+      stageWinTokens: 4,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
       powerupCosts: {
-        peek: 2,
-        freeze: 3,
-        undo: 3,
+        peek: 3,
+        freeze: 4,
+        undo: 4,
       },
     },
-
-    // Stage 2 (3x4 = 12 cards = 6 pairs)
+    // Stage 2 (2x5 = 10 cards = 5 pairs)
     {
       stageId: 2,
+      rows: 2,
+      cols: 5,
+      timeLimit: 48,
+      moveLimit: 17,
+      startTokens: 4,
+      stageWinTokens: 4,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 3 (3x4 = 12 cards = 6 pairs)
+    {
+      stageId: 3,
       rows: 3,
       cols: 4,
-      timeLimit: 45,
-      moveLimit: 18,
-      startTokens: 5,
+      timeLimit: 54,
+      moveLimit: 20,
+      startTokens: 4,
       stageWinTokens: 5,
-
       rewardMatch: 1,
-      penaltyMismatchTime: 2,
-
+      penaltyMismatchTime: 4,
       powerupCosts: {
-        peek: 2,
-        freeze: 3,
-        undo: 3,
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 4 (2x7 = 14 cards = 7 pairs)
+    {
+      stageId: 4,
+      rows: 2,
+      cols: 7,
+      timeLimit: 60,
+      moveLimit: 23,
+      startTokens: 4,
+      stageWinTokens: 5,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 5 (4x4 = 16 cards = 8 pairs)
+    {
+      stageId: 5,
+      rows: 4,
+      cols: 4,
+      timeLimit: 66,
+      moveLimit: 26,
+      startTokens: 4,
+      stageWinTokens: 5,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 6 (3x6 = 18 cards = 9 pairs)
+    {
+      stageId: 6,
+      rows: 3,
+      cols: 6,
+      timeLimit: 72,
+      moveLimit: 29,
+      startTokens: 4,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 4,
+      },
+    },
+    // Stage 7 (4x5 = 20 cards = 10 pairs)
+    {
+      stageId: 7,
+      rows: 4,
+      cols: 5,
+      timeLimit: 78,
+      moveLimit: 32,
+      startTokens: 4,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 4,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 5,
+      },
+    },
+    // Stage 8 (2x11 = 22 cards = 11 pairs)
+    {
+      stageId: 8,
+      rows: 2,
+      cols: 11,
+      timeLimit: 84,
+      moveLimit: 35,
+      startTokens: 4,
+      stageWinTokens: 6,
+      rewardMatch: 1,
+      penaltyMismatchTime: 5,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 5,
+      },
+    },
+    // Stage 9 (4x6 = 24 cards = 12 pairs)
+    {
+      stageId: 9,
+      rows: 4,
+      cols: 6,
+      timeLimit: 90,
+      moveLimit: 38,
+      startTokens: 4,
+      stageWinTokens: 7,
+      rewardMatch: 1,
+      penaltyMismatchTime: 5,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 5,
+      },
+    },
+    // Stage 10 (4x6 = 24 cards = 12 pairs)
+    {
+      stageId: 10,
+      rows: 4,
+      cols: 6,
+      timeLimit: 96,
+      moveLimit: 42,
+      startTokens: 4,
+      stageWinTokens: 7,
+      rewardMatch: 1,
+      penaltyMismatchTime: 5,
+      powerupCosts: {
+        peek: 3,
+        freeze: 4,
+        undo: 5,
       },
     },
   ],

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Ring card</title>
+  <desc id="desc">Clean ring icon on a bordered card.</desc>
+  <rect x="12" y="12" width="232" height="232" rx="36" fill="#fffaf4" stroke="#dccfbe" stroke-width="8"/>
+  <circle cx="128" cy="128" r="72" fill="#dff5ea"/>
+  <circle cx="128" cy="152" r="40" fill="none" stroke="#e3b54d" stroke-width="18"/>
+  <path d="M128 70 148 96 128 118 108 96Z" fill="#6ed1df" stroke="#2d7d8b" stroke-linejoin="round" stroke-width="8"/>
+  <path d="M108 96h40" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="6"/>
+</svg>

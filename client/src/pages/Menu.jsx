@@ -55,7 +55,7 @@ function Menu() {
 
             <Link to="/designer">
               <button type="button" data-variant="ghost">
-                Designer
+                Dashboard
               </button>
             </Link>
           </div>

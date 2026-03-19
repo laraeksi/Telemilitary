@@ -1,0 +1,60 @@
+<mxfile host="app.diagrams.net" modified="2026-03-19T20:49:00.000Z" agent="Cursor" version="24.7.17">
+  <diagram id="tele-data" name="Data Model">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Telemilitary Data Model (Simplified Relationships)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=24;" vertex="1" parent="1">
+          <mxGeometry x="60" y="20" width="700" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="coreLane" value="Core gameplay telemetry path" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4F46E5;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="1280" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="balanceLane" value="Balancing and decisions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF3;strokeColor=#16A34A;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="1280" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="des" value="DESIGNERS&#xa;PK user_id&#xa;username&#xa;password_hash" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F0FF;strokeColor=#845EF7;" vertex="1" parent="1">
+          <mxGeometry x="100" y="130" width="190" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="ses" value="SESSIONS&#xa;PK session_id&#xa;FK user_id&#xa;FK config_id&#xa;outcome" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4F7CFF;" vertex="1" parent="1">
+          <mxGeometry x="360" y="130" width="200" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="evt" value="EVENTS&#xa;PK event_id&#xa;FK session_id&#xa;stage_id&#xa;event_type&#xa;payload&#xa;is_valid" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4F7CFF;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="620" y="115" width="220" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="ano" value="ANOMALIES&#xa;PK anomaly_id&#xa;FK event_id&#xa;anomaly_type&#xa;resolution_status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE8E8;strokeColor=#DC2626;" vertex="1" parent="1">
+          <mxGeometry x="910" y="130" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="cfg" value="CONFIGS&#xa;PK config_id&#xa;label&#xa;start_tokens" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F08C00;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="130" width="140" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="stg" value="STAGES&#xa;PK (stage_id, config_id)&#xa;timer_seconds&#xa;move_limit&#xa;mismatch_penalty_seconds" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F08C00;" vertex="1" parent="1">
+          <mxGeometry x="260" y="360" width="230" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="hlp" value="HELPERS&#xa;FK stage_id&#xa;FK config_id&#xa;helper_key&#xa;cost&#xa;effect_seconds" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F08C00;" vertex="1" parent="1">
+          <mxGeometry x="560" y="360" width="210" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="tok" value="TOKEN_RULES&#xa;FK stage_id&#xa;FK config_id&#xa;per_match&#xa;on_complete" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F08C00;" vertex="1" parent="1">
+          <mxGeometry x="860" y="360" width="210" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="dec" value="DECISIONS&#xa;PK decision_id&#xa;FK config_id&#xa;FK stage_id&#xa;change_json&#xa;rationale&#xa;evidence_links" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#16A34A;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="340" width="200" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="m1" value="" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=3;strokeColor=#4F46E5;rounded=0;html=1;" edge="1" parent="1" source="des" target="ses"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="m2" value="" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=3;strokeColor=#4F46E5;rounded=0;html=1;" edge="1" parent="1" source="ses" target="evt"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="m3" value="" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=3;strokeColor=#4F46E5;rounded=0;html=1;" edge="1" parent="1" source="evt" target="ano"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="m4" value="" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=3;strokeColor=#4F46E5;rounded=0;html=1;" edge="1" parent="1" source="cfg" target="ses"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="s1" value="" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=block;strokeColor=#64748B;html=1;" edge="1" parent="1" source="cfg" target="stg"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s2" value="" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=block;strokeColor=#64748B;html=1;" edge="1" parent="1" source="stg" target="hlp"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s3" value="" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=block;strokeColor=#64748B;html=1;" edge="1" parent="1" source="stg" target="tok"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s4" value="" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=block;strokeColor=#64748B;html=1;" edge="1" parent="1" source="cfg" target="dec"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s5" value="" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=block;strokeColor=#64748B;html=1;" edge="1" parent="1" source="stg" target="dec"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

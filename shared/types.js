@@ -28,7 +28,7 @@
  */
 
 /**
- * @typedef {"player"|"designer"} Role
+ * @typedef {"player"|"designer"|"viewer"} Role
  */
 
 /**

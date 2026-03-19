@@ -16,7 +16,7 @@ from flask import Blueprint, request
 from data.db import get_connection
 from logic.telemetry import validate_event
 from models import EventType
-from utils.auth import require_designer
+from utils.auth import require_dashboard, require_designer
 from utils.errors import error_response
 
 # Blueprint for telemetry-related endpoints
@@ -129,12 +129,11 @@ def ingest_event():
     }, 201
 
 
-# List telemetry events (designer-only).
+# List telemetry events (designer or viewer).
 @bp.get("/api/events")
 def list_events():
-    # Designer-only endpoint to query raw telemetry events
-
-    auth_error = require_designer()
+    # Dashboard endpoint to query raw telemetry events (read-only for viewer)
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 

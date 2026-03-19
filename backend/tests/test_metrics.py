@@ -1,14 +1,28 @@
 # Tests for metrics helpers.
 # Covers stage stats and funnel output.
-from logic.metrics import get_funnel_metrics, _build_stage_metrics
+from config import Config
+from data.db import init_db
+from logic.metrics import (
+    get_funnel_metrics,
+    _build_stage_metrics,
+    _segment_records_by_percent,
+    _segment_completion_rate,
+    _segment_move_fail_ratio,
+)
 from models import EventType
 
 
 # Basic funnel metrics sanity check.
-def test_funnel_metrics():
+def test_funnel_metrics(tmp_path, monkeypatch):
+    # Point DB to a temporary file and initialize schema + seed data.
+    db_path = tmp_path / "test_metrics.db"
+    monkeypatch.setattr(Config, "DB_PATH", str(db_path))
+    init_db()
+
     result = get_funnel_metrics("balanced")
-    # Basic sanity check for config id.
+    # Basic sanity check for config id and presence of at least one stage.
     assert result["config_id"] == "balanced"
+    assert isinstance(result.get("stages"), list)
 
 
 # Stage metrics: completion + token accounting.
@@ -145,3 +159,28 @@ def test_build_stage_metrics_failure_and_move_fail():
     assert record["time_spent"] == 120.0
     assert record["failed"] is True
     assert record["fail_reason"] == "moves"
+
+
+def test_segment_helpers_and_completion_rate():
+    records = [
+        {"time_spent": 10.0, "completed": True, "failed": False, "fail_reason": None},
+        {"time_spent": 20.0, "completed": False, "failed": True, "fail_reason": "moves"},
+        {"time_spent": 30.0, "completed": True, "failed": False, "fail_reason": None},
+        {"time_spent": 40.0, "completed": False, "failed": True, "fail_reason": "time"},
+        {"time_spent": 50.0, "completed": False, "failed": True, "fail_reason": "moves"},
+    ]
+
+    fast = _segment_records_by_percent(records, "time_spent", top=False)
+    slow = _segment_records_by_percent(records, "time_spent", top=True)
+
+    # With 5 records and 40% cut, each segment should have at least 2 entries.
+    assert len(fast) >= 2
+    assert len(slow) >= 2
+
+    fast_cr = _segment_completion_rate(fast)
+    slow_cr = _segment_completion_rate(slow)
+    assert 0.0 <= fast_cr <= 1.0
+    assert 0.0 <= slow_cr <= 1.0
+
+    move_ratio = _segment_move_fail_ratio(records)
+    assert 0.0 <= move_ratio <= 1.0

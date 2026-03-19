@@ -1,6 +1,7 @@
 # Tests for telemetry validation rules.
 # Focuses on missing/invalid fields.
 from logic.telemetry import validate_event
+from models import ConfigId
 
 # Build a minimal valid stage_start event.
 def make_valid_stage_start():
@@ -127,4 +128,44 @@ def test_missing_payload_fields_for_stage_start():
         for a in result["anomalies"]
     )
 
+
+# Non-dict payloads should be flagged as invalid_payload.
+def test_payload_not_dict_marks_invalid():
+    event = make_valid_stage_start()
+    event["payload"] = "not-a-dict"
+    result = validate_event(event)
+    assert result["is_valid"] is False
+    assert any(
+        a["anomaly_type"] == "invalid_payload"
+        and a["detected_by"] == "payload_type_check"
+        for a in result["anomalies"]
+    )
+
+
+# Stage id outside allowed range should be treated as invalid_value.
+def test_stage_id_out_of_range_marks_invalid():
+    event = make_valid_stage_start()
+    event["stage_id"] = 99
+    result = validate_event(event)
+    assert result["is_valid"] is False
+    assert any(
+        a["anomaly_type"] == "invalid_value"
+        and a["detected_by"] == "stage_id_check"
+        for a in result["anomalies"]
+    )
+
+
+# Config id outside enum should be treated as invalid_value.
+def test_invalid_config_id_marks_invalid():
+    event = make_valid_stage_start()
+    # Ensure we are not accidentally using a valid enum value.
+    assert "invalid_config" not in [c.value for c in ConfigId]
+    event["config_id"] = "invalid_config"
+    result = validate_event(event)
+    assert result["is_valid"] is False
+    assert any(
+        a["anomaly_type"] == "invalid_value"
+        and a["detected_by"] == "config_id_check"
+        for a in result["anomalies"]
+    )
     

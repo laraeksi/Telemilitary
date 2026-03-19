@@ -16,8 +16,12 @@ class Permissions:
     def is_designer():
         # True when current session is a designer.
         return Session.get_role() == Role.DESIGNER
-    
-    
+
+    @staticmethod
+    # True if role is viewer (read-only dashboard).
+    def is_viewer():
+        return Session.get_role() == Role.VIEWER
+
     @staticmethod
     # Print a simple denial message.
     def deny_access():

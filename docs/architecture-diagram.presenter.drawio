@@ -1,0 +1,41 @@
+<mxfile host="app.diagrams.net" modified="2026-03-19T21:00:00.000Z" agent="Cursor" version="24.7.17">
+  <diagram id="tele-arch-presenter" name="Architecture Presenter">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Telemilitary - High-Level Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="80" y="40" width="760" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="n1" value="1) Browser Game Client&#xa;React pages + game logic&#xa;Telemetry events emitted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F1FF;strokeColor=#4F7CFF;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="100" y="180" width="290" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n2" value="2) Shared Contracts&#xa;Event schema + config types&#xa;Used by client and server" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F0FF;strokeColor=#845EF7;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="450" y="180" width="290" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n3" value="3) Flask API Layer&#xa;Ingestion, metrics, balancing, auth&#xa;CSV export + decision logging" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E9F7EF;strokeColor=#2F9E44;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="800" y="180" width="290" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n4" value="4) SQLite Data Store&#xa;Sessions, events, anomalies&#xa;Configs, stages, decisions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4E6;strokeColor=#F08C00;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="180" width="290" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1" value="Supports offline seeded dataset" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="820" y="400" width="260" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2" value="Designer dashboard reads analytics + runs balancing scenarios" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#DC2626;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="400" width="330" height="55" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=4;strokeColor=#4F46E5;rounded=0;html=1;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=4;strokeColor=#4F46E5;rounded=0;html=1;" edge="1" parent="1" source="n2" target="n3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=4;strokeColor=#4F46E5;rounded=0;html=1;" edge="1" parent="1" source="n3" target="n4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=block;strokeWidth=2;strokeColor=#64748B;rounded=0;html=1;" edge="1" parent="1" source="n3" target="s1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=block;strokeWidth=2;strokeColor=#64748B;rounded=0;html=1;" edge="1" parent="1" source="n4" target="s2"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

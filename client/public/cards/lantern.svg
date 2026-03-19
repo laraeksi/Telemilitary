@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Lantern card</title>
+  <desc id="desc">Black lantern silhouette on a transparent background.</desc>
+  <path fill="#000" d="M191 54c0-36 29-65 65-65s65 29 65 65h-38c0-15-12-27-27-27s-27 12-27 27h-38Zm-8 25h146c10 0 18 8 18 18s-8 18-18 18h-6l-17 52c24 18 39 46 39 77v124c0 16-13 29-29 29H196c-16 0-29-13-29-29V244c0-31 15-59 39-77l-17-52h-6c-10 0-18-8-18-18s8-18 18-18Zm35 36 10 29h56l10-29h-76Zm16 80c-17 9-29 28-29 49v117h102V244c0-21-12-40-29-49h-44Zm3 204h38v26c0 24 18 43 41 43h22v30H174v-30h22c23 0 41-19 41-43v-26Z"/>
+</svg>

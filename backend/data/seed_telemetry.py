@@ -29,23 +29,26 @@ def seed_telemetry(conn):
     # Base timestamp for seeded sessions.
     base_time = datetime(2026, 2, 1, 12, 0, 0)
 
-    # Pseudonymous user IDs (no real personal data).
+    # Pseudonymous user IDs (no real personal data). 100+ users (doubled).
     users = [f"u_{i:03d}" for i in range(1, 103)]
     # Rotate through difficulty configs.
     configs = [ConfigId.EASY.value, ConfigId.BALANCED.value, ConfigId.HARD.value]
 
-    # Number of demo sessions to seed.
+    # Number of demo sessions to seed (doubled: 600 sessions = more players).
     session_count = 600
 
-    # Target completion rates for each difficulty config.
+    # Target completion rate per (config, stage). More people finish each; easy > balanced > hard.
+    # Easy: very high rates (~55–60% of easy sessions finish).
+    # Balanced: high rates (~30–35% finish).
+    # Hard: raised so more complete all 10 stages (~22–28% finish), still fewer than balanced.
     TARGET_COMPLETION = {
         "easy": [0.995, 0.98, 0.965, 0.95, 0.935, 0.92, 0.905, 0.89, 0.875, 0.86],
         "balanced": [0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.79, 0.76, 0.73, 0.70],
         "hard": [0.96, 0.92, 0.88, 0.84, 0.80, 0.76, 0.72, 0.68, 0.64, 0.60],
     }
-    
+    # Running (completes, fails) per (config_id, stage_id) to assign outcomes against target.
     stage_counts = {}
-    
+
     def choose_pass_fail(config_id, stage_id):
         key = (config_id, stage_id)
         c, f = stage_counts.get(key, (0, 0))
@@ -61,12 +64,12 @@ def seed_telemetry(conn):
         session_id = f"s_{i+1:04d}"
         user_id = rng.choice(users) # Picks a user at random 
         config_id = configs[i % 3]
-        # Config-dependent behaviour (makes compare charts meaningful)
+        # Whether to attempt stage 2 and quit probability. More attempt = more reach later stages (easy > balanced > hard).
         attempt_stage2_prob = {"easy": 0.98, "balanced": 0.92, "hard": 0.90}[config_id]
-        quit_prob           = {"easy": 0.01, "balanced": 0.02, "hard": 0.03}[config_id]
+        quit_prob = {"easy": 0.01, "balanced": 0.02, "hard": 0.03}[config_id]
 
         # When stage2 fails, what share are move-based fails (vs time-based)?
-        move_fail_share     = {"easy": 0.40, "balanced": 0.45, "hard": 0.50}[config_id]
+        move_fail_share = {"easy": 0.40, "balanced": 0.45, "hard": 0.50}[config_id]
 
         
         # Create a session timeline 
@@ -528,6 +531,8 @@ def seed_telemetry(conn):
         )
 
     # Ensure every (config, stage) has at least one run so the dashboard shows all 10 stages.
+    # Use full-progression sessions (stage 1 → 2 → … → N) so the funnel never increases:
+    # "Starts" at stage N+1 can never exceed "Starts" at stage N.
     for config_id in configs:
         for stage_id in range(1, 11):
             row = conn.execute(
@@ -629,7 +634,7 @@ def seed_telemetry(conn):
                                 "tokens_spent": 0,
                             },
                         ),
-                    )    
+                    )
 
     # Seed a few designer decisions (Sprint 1 scale)
     seed_decisions(conn, base_time)

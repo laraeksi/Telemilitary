@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Queen card</title>
+  <desc id="desc">Clean crown icon on a bordered card.</desc>
+  <rect x="12" y="12" width="232" height="232" rx="36" fill="#fffaf4" stroke="#dccfbe" stroke-width="8"/>
+  <circle cx="128" cy="128" r="72" fill="#e8d7ff"/>
+  <path d="M66 164 86 96l42 38 42-38 20 68Z" fill="#f4c95d" stroke="#8f6a14" stroke-linejoin="round" stroke-width="8"/>
+  <circle cx="86" cy="92" r="10" fill="#ff7ca8"/>
+  <circle cx="128" cy="72" r="12" fill="#6ec5ff"/>
+  <circle cx="170" cy="92" r="10" fill="#7acb88"/>
+  <rect x="82" y="164" width="92" height="16" rx="8" fill="#fff4c8" stroke="#8f6a14" stroke-width="6"/>
+</svg>

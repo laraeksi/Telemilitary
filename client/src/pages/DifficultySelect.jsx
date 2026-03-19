@@ -28,7 +28,7 @@ export default function DifficultySelect() {
         <div className="page__content">
             <section className="panel hero">
             <h1 className="hero__title">Select difficulty</h1>
-            <p className="hero__subtitle">Prototype: 2 stages per difficulty</p>
+            <p className="hero__subtitle">Play through 10 stages per difficulty</p>
 
             <div className="action-row">
                 {/* Quick buttons for difficulty */}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Rose card</title>
+  <desc id="desc">Clean rose icon on a bordered card.</desc>
+  <rect x="12" y="12" width="232" height="232" rx="36" fill="#fffaf4" stroke="#dccfbe" stroke-width="8"/>
+  <circle cx="128" cy="128" r="72" fill="#ffe0ea"/>
+  <path d="M128 90c16-18 44-14 44 10 0 10-4 18-12 24 2 18-12 30-32 30-24 0-40-16-40-34 0-20 20-36 40-30Z" fill="#d85f7b"/>
+  <path d="M102 112c10-10 28-12 42 0-10 2-18 8-24 18-4-8-10-14-18-18Z" fill="#f7a1b6"/>
+  <path d="M128 156v42" fill="none" stroke="#56845c" stroke-linecap="round" stroke-width="10"/>
+  <path d="M128 176c-16-4-24 6-30 18 16-2 24-8 30-18Zm0-6c16-8 26-6 36 8-16 0-24-2-36-8Z" fill="#79b37b"/>
+</svg>

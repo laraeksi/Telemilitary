@@ -6,18 +6,35 @@ import { apiUrl } from "../api/base";
 
 const CONFIGS = ["easy", "balanced", "hard"];
 
-const designerHeaders = {
-  "Content-Type": "application/json",
-  "X-Role": "designer",
-};
+const DASHBOARD_ROLE_KEY = "dashboard_role";
+
+function getDashboardRole() {
+  return sessionStorage.getItem(DASHBOARD_ROLE_KEY) || "designer";
+}
 
 async function fetchJson(url, options = {}) {
+  const role = getDashboardRole();
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Role": role,
+    ...(options.headers || {}),
+  };
   const res = await fetch(apiUrl(url), {
     ...options,
-    headers: { ...designerHeaders, ...(options.headers || {}) },
+    headers,
   });
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+    let message = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      message = data?.error?.message || data?.message || message;
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) message = text;
+      } catch {}
+    }
+    throw new Error(message);
   }
   // Always return parsed JSON for callers.
   return res.json();
@@ -36,13 +53,14 @@ const formatPercent = (value) => `${(value * 100).toFixed(1)}%`;
 const formatSeconds = (value) => `${value.toFixed(1)}s`;
 const formatTokens = (value) => `${value.toFixed(1)} tokens`;
 
-function BarChart({ data, height = 18, valueFormatter }) {
+function BarChart({ data, height = 18, valueFormatter, scaleMax }) {
   if (!data?.length) return <p>No data yet.</p>;
 
-  // Compute min/max for scaling bars.
+  // Compute min/max for scaling bars. Optional scaleMax (e.g. 0.2 for 20%) avoids compressing small values.
   const values = data.map((d) => d.value);
   const minValue = Math.min(...values, 0);
-  const maxValue = Math.max(...values, 0, 1);
+  const dataMax = Math.max(...values, 0, 1);
+  const maxValue = scaleMax != null ? Math.max(scaleMax, dataMax) : dataMax;
   const range = maxValue - minValue || 1;
 
   const formatValue =
@@ -189,7 +207,7 @@ function LineChart({ data, height = 180, color = "#37b24d", valueFormatter }) {
 }
 
 function FunnelTable({ stages }) {
-  if (!stages?.length) return <p>No funnel data available.</p>;
+  if (!stages?.length) return <p>No funnel data to show yet.</p>;
 
   return (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -197,13 +215,13 @@ function FunnelTable({ stages }) {
         <tr>
           {[
             "Stage",
-            "Starts",
-            "Completes",
-            "Fails",
-            "Quits",
-            "Complete %",
+            "Started",
+            "Cleared",
+            "Failed",
+            "Quit",
+            "Clear %",
             "Fail %",
-            "Drop-off to next %",
+            "Drop to next stage",
           ].map((h) => (
             <th
               key={h}
@@ -252,18 +270,18 @@ function SimulationResult({ simulation, stageId }) {
 
   const results = simulation.results || [];
   if (!results.length) {
-    return <p>No simulation results returned.</p>;
+    return <p>No result came back for that simulation.</p>;
   }
 
   const r = results.find((x) => Number(x.stage_id) === Number(stageId));
-  if (!r) return <p>No simulation result for Stage {stageId}.</p>;
+  if (!r) return <p>There is no simulation result for Stage {stageId}.</p>;
 
   const before = r.before || {};
   const after = r.after || {};
 
   const pct = (x) => ((x || 0) * 100);
-  const fmt = (x) => `${x.toFixed(1)}%`;
-  const delta = (a, b) => `${(b - a).toFixed(1)}%`;
+  const fmt = (x) => `${x.toFixed(2)}%`;
+  const delta = (a, b) => `${(b - a).toFixed(2)}%`;
 
   const beforeC = pct(before.completion_rate);
   const afterC = pct(after.completion_rate);
@@ -301,7 +319,7 @@ function SimulationResult({ simulation, stageId }) {
       {Array.isArray(r.notes) && r.notes.length > 0 ? (
         <div style={{ marginTop: 6 }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-            Simulation notes
+            What this means
           </div>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {r.notes.map((n, idx) => (
@@ -311,7 +329,7 @@ function SimulationResult({ simulation, stageId }) {
         </div>
       ) : (
         <div style={{ fontSize: 13, opacity: 0.8 }}>
-          No notes returned.
+          No extra notes for this one.
         </div>
       )}
     </div>
@@ -329,12 +347,14 @@ function Dashboard() {
   const [fairness, setFairness] = useState(null);
   const [compare, setCompare] = useState(null);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const [suggestions, setSuggestions] = useState([]);
   const [simStageId, setSimStageId] = useState(2);
   const [timerDelta, setTimerDelta] = useState(5);
   const [moveDelta, setMoveDelta] = useState(0);
   const [simulation, setSimulation] = useState(null);
+  const [isSimulationLoading, setIsSimulationLoading] = useState(false);
   const [decisionStageId, setDecisionStageId] = useState(1);
   const [decisionChange, setDecisionChange] = useState("");
   const [decisionRationale, setDecisionRationale] = useState("");
@@ -353,6 +373,7 @@ function Dashboard() {
 
   async function loadMetrics(selectedConfig) {
     setError("");
+    setIsLoading(true);
     try {
       const [funnelData, stageData, progressionData, fairnessData, compareData] =
         await Promise.all([
@@ -370,6 +391,8 @@ function Dashboard() {
       setCompare(compareData);
     } catch (err) {
       setError("Failed to load dashboard metrics.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -410,6 +433,8 @@ function Dashboard() {
   async function runSimulation(e) {
     e.preventDefault();
     setError("");
+    setSimulation(null);
+    setIsSimulationLoading(true);
     try {
       const data = await fetchJson("/api/balancing/simulate", {
         method: "POST",
@@ -425,8 +450,11 @@ function Dashboard() {
         }),
       });
       setSimulation(data);
-    } catch {
-      setError("Failed to run simulation.");
+    } catch (err) {
+      setError(err.message || "Failed to run simulation.");
+      console.error("Simulation failed", err);
+    } finally {
+      setIsSimulationLoading(false);
     }
   }
 
@@ -465,6 +493,10 @@ useEffect(() => {
     setSimStageId(stageOptions[0]);
   }
 }, [stageOptions, simStageId]);
+
+  useEffect(() => {
+    setSimulation(null);
+  }, [configId, simStageId, timerDelta, moveDelta]);
 
   const funnelBars =
     funnel?.stages?.map((stage) => ({
@@ -508,10 +540,10 @@ useEffect(() => {
     })) || [];
 
   const suggestionCopy = {
-    R3_HELPERS_UNAFFORDABLE: "Helpers feel pricey for the current rewards.",
-    R4_HELPERS_OVERUSED: "Players lean on helpers a lot here.",
-    R5_FAIRNESS_VIOLATION: "Player segments aren’t getting a fair shake.",
-    R6_PROGRESSION_DROPOFF: "A lot of players drop here.",
+    R3_HELPERS_UNAFFORDABLE: "Helpers seem a bit too expensive for what players earn here.",
+    R4_HELPERS_OVERUSED: "Players are relying on helpers a lot on this stage.",
+    R5_FAIRNESS_VIOLATION: "Different player groups are getting noticeably different outcomes here.",
+    R6_PROGRESSION_DROPOFF: "This is a point where a lot of players seem to drop off.",
   };
 
   async function addDecision(e) {
@@ -541,19 +573,27 @@ useEffect(() => {
     }
   }
 
+  const isViewer = getDashboardRole() === "viewer";
+
   return (
     <main style={{ padding: 24, display: "grid", gap: 16 }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ marginBottom: 4 }}>Designer Dashboard</h1>
           <p style={{ marginTop: 0, opacity: 0.75 }}>
-            Telemetry funnel, difficulty spikes, fairness, and balancing suggestions.
+            A quick view of how players are getting on, where things feel too hard, and what might be worth adjusting.
           </p>
         </div>
         <Link to="/">
           <button type="button">Back to Home</button>
         </Link>
       </header>
+
+      {isViewer && (
+        <div style={{ padding: "10px 14px", background: "#e3f2fd", borderRadius: 8, fontSize: 14 }}>
+          You are in view-only mode as <strong>viewer</strong>. Exporting data and adding decision notes are only available to designers.
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <label>
@@ -571,49 +611,55 @@ useEffect(() => {
           </select>
         </label>
 
-        <button type="button" onClick={() => loadMetrics(configId)}>
+        <button type="button" onClick={() => loadMetrics(configId)} disabled={isLoading}>
           Refresh metrics
         </button>
-        <button type="button" onClick={exportCsv}>
+        <button type="button" onClick={exportCsv} disabled={isViewer} title={isViewer ? "Designer only" : ""}>
           Export CSV
         </button>
       </div>
 
+      {isLoading && (
+        <p style={{ margin: 0, fontSize: 13, opacity: 0.8 }}>Loading the latest dashboard data…</p>
+      )}
       {error && <p style={{ color: "#b00020" }}>{error}</p>}
 
       <div style={{ display: "grid", gap: 16 }}>
-      <DataBlock title="1) Funnel View (Starts → Completes → Drop-off)">
+      <DataBlock title="1) Player Funnel">
         <BarChart data={funnelBars} valueFormatter={formatPercent} />
         <div style={{ marginTop: 12 }}>
           <FunnelTable stages={funnel?.stages || []} />
         </div>
       </DataBlock>
 
-        <DataBlock title="2) Difficulty / Spike Detection (Failure Rate)">
+        <DataBlock title="2) Where Players Struggle">
           <BarChart data={spikeBars} valueFormatter={formatPercent} />
         </DataBlock>
 
-        <DataBlock title="3) Progression Curves (Avg Time per Stage)">
+        <DataBlock title="3) Time Spent by Stage">
           <LineChart data={progressionTime} valueFormatter={formatSeconds} />
         </DataBlock>
 
-        <DataBlock title="3) Progression Curves (Net Tokens per Stage)">
+        <DataBlock title="4) Net Tokens by Stage">
           <LineChart data={progressionTokens} color="#ff922b" valueFormatter={formatTokens} />
         </DataBlock>
 
-        <DataBlock title="4) Fairness Comparison (Completion Gap)">
-          <BarChart data={fairnessBars} valueFormatter={formatPercent} />
+        <DataBlock title="5) Fairness Check">
+          <p style={{ fontSize: 12, opacity: 0.8, marginTop: 0 }}>
+            This shows the gap in completion rates between different player groups. The scale is kept tight so smaller differences are easier to spot.
+          </p>
+          <BarChart data={fairnessBars} valueFormatter={formatPercent} scaleMax={0.20} />
         </DataBlock>
 
-        <DataBlock title="5) Config Comparison (Easy vs Hard Completion Gap)">
+        <DataBlock title="6) Easy vs Hard Comparison">
           <BarChart data={compareBars} valueFormatter={formatPercent} />
         </DataBlock>
       </div>
 
       <section style={{ display: "grid", gap: 16 }}>
-        <DataBlock title="Balancing Ideas (Quick Takeaways)">
+        <DataBlock title="Quick Takeaways">
           {suggestions.length === 0 ? (
-            <p>Nothing to flag yet — data is still light.</p>
+            <p>Nothing stands out yet, but there may just not be enough data to call it confidently.</p>
           ) : (
             <ul>
               {suggestions.map((item) => (
@@ -627,8 +673,8 @@ useEffect(() => {
           
         </DataBlock>
 
-        <DataBlock title="Decision Log (What we changed and why)">
-          
+        <DataBlock title="Decision Notes">
+          {!isViewer && (
           <form onSubmit={addDecision} style={{ display: "grid", gap: 8 }}>
             <label>
               Stage
@@ -645,7 +691,7 @@ useEffect(() => {
               </select>
             </label>
             <label>
-              What did you change?
+              What changed?
               <input
                 type="text"
                 value={decisionChange}
@@ -665,21 +711,22 @@ useEffect(() => {
               />
             </label>
             <label>
-              Evidence (which chart?)
+              What pointed you to it?
               <input
                 type="text"
                 value={decisionEvidence}
                 onChange={(e) => setDecisionEvidence(e.target.value)}
-                placeholder="Example: Difficulty Spike chart + Funnel drop-off"
+                placeholder="Example: Funnel drop-off and failure-rate chart"
                 style={{ marginLeft: 8, width: "100%" }}
               />
             </label>
-            <button type="submit">Add note</button>
+            <button type="submit">Save note</button>
           </form>
+          )}
 
           {decisionLog.length === 0 ? (
             <p style={{ marginTop: 12, fontSize: 13, opacity: 0.75 }}>
-              No decisions recorded yet.
+              No notes saved yet.
             </p>
           ) : (
             <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
@@ -692,7 +739,7 @@ useEffect(() => {
                   <div style={{ marginTop: 6 }}>
                     <strong>Stage {entry.stageId}:</strong> {entry.change}
                   </div>
-                  <div style={{ marginTop: 4 }}>Why: {entry.rationale}</div>
+                  <div style={{ marginTop: 4 }}>Reason: {entry.rationale}</div>
                   <div style={{ marginTop: 4, opacity: 0.8 }}>Evidence: {entry.evidence}</div>
                 </div>
               ))}
@@ -700,13 +747,13 @@ useEffect(() => {
           )}
         </DataBlock>
 
-        <DataBlock title="Simulation: Adjust One Parameter">
+        <DataBlock title="Simulation">
           <form onSubmit={runSimulation} style={{ display: "grid", gap: 8 }}>
             <label>
               Stage
               <select
                 value={simStageId}
-                onChange={(e) => setSimStageId(e.target.value)}
+                onChange={(e) => setSimStageId(Number(e.target.value))}
                 style={{ marginLeft: 8 }}
               >
                 {stageOptions.map((stage) => (
@@ -717,7 +764,7 @@ useEffect(() => {
               </select>
             </label>
             <label>
-              Timer delta (seconds)
+              Change timer by (seconds)
               <input
                 type="number"
                 value={timerDelta}
@@ -726,7 +773,7 @@ useEffect(() => {
               />
             </label>
             <label>
-              Move limit delta
+              Change move limit by
               <input
                 type="number"
                 value={moveDelta}
@@ -734,7 +781,10 @@ useEffect(() => {
                 style={{ marginLeft: 8 }}
               />
             </label>
-            <button type="submit">Run simulation</button>
+            <button type="submit" disabled={isSimulationLoading}>
+              {isSimulationLoading ? "Running…" : "Run simulation"}
+            </button>
+            {isSimulationLoading && <p style={{ margin: 0, fontSize: 13, opacity: 0.75 }}>Trying that change against the current data…</p>}
           </form>
           {simulation && <SimulationResult simulation={simulation} stageId={simStageId} />}
         </DataBlock>

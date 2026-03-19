@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Music card</title>
+  <desc id="desc">Clean music notes icon on a bordered card.</desc>
+  <rect x="12" y="12" width="232" height="232" rx="36" fill="#fffaf4" stroke="#dccfbe" stroke-width="8"/>
+  <circle cx="128" cy="128" r="72" fill="#e9e1ff"/>
+  <path d="M110 84v76c0 14-10 24-24 24s-22-8-22-18 10-20 22-20c6 0 12 2 16 5V96l76-14v62c0 14-10 24-24 24s-22-8-22-18 10-20 22-20c6 0 12 2 16 5V84Z" fill="#54409b"/>
+</svg>

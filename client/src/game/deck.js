@@ -21,12 +21,12 @@ export const CARD_IMAGES = [
   { id: "helmet", img: "/cards/helmet.png" },
   { id: "ring", img: "/cards/ring.png" },
   { id: "acorn", img: "/cards/acorn.png" },
-  {id: "rose", img: "/cards/rose.png"},
-  {id: "key", img: "/cards/key.png"},
-  {id: "music", img: "/cards/music.png"},
-  {id: "compass", img: "/cards/compass.png"},
-  // we will add more later
-  // add unique ids and image paths
+  { id: "rose", img: "/cards/rose.png" },
+  { id: "key", img: "/cards/key.png" },
+  { id: "music", img: "/cards/music.png" },
+  { id: "compass", img: "/cards/compass.png" },
+  { id: "lantern", img: "/cards/lantern.svg" },
+  { id: "shield", img: "/cards/shield.svg" },
 ];
 
 /**
@@ -44,12 +44,14 @@ export function buildDeck({ rows, cols }) {
   // Number of pairs needed for this board size.
   const pairsNeeded = totalCards / 2;
 
-  // If you don't have enough unique images yet, we reuse them (fine for prototype)
-  const chosen = [];
-  // Cycle through images if not enough unique ones.
-  for (let i = 0; i < pairsNeeded; i++) {
-    chosen.push(CARD_IMAGES[i % CARD_IMAGES.length]);
+  if (pairsNeeded > CARD_IMAGES.length) {
+    throw new Error(
+      `Not enough unique card images. Need ${pairsNeeded}, have ${CARD_IMAGES.length}`,
+    );
   }
+
+  // Shuffle the art pool first so large boards stay unique but runs still feel varied.
+  const chosen = shuffle(CARD_IMAGES).slice(0, pairsNeeded);
 
   // Duplicate each chosen card to create pairs
   const rawDeck = chosen
