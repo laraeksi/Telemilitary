@@ -10,7 +10,7 @@ from flask import Blueprint, request
 from data.db import get_connection
 from logic.balancing import get_suggestions, simulate_balance_change
 from models import ConfigId
-from utils.auth import require_designer
+from utils.auth import require_dashboard
 from utils.configs import get_config
 from utils.errors import error_response
 
@@ -24,7 +24,7 @@ def suggestions():
     # Returns rule-based balancing suggestions for a given config
     # Uses aggregated telemetry data (fail rates, time, etc.)
     # Designer role required for access.
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
@@ -43,7 +43,7 @@ def simulate():
     # Runs a lightweight simulation to estimate the impact of parameter changes
     # Does not modify stored configs
     # This is read-only.
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
@@ -62,7 +62,7 @@ def balancing_parameters():
     # Returns all editable balancing parameters for a config
     # Used to populate the designer parameter editor UI
     # Designer-only access.
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
