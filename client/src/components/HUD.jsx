@@ -1,29 +1,30 @@
 // Heads-up display for game status numbers.
 // Shows difficulty, time, moves, and tokens.
-function HUD({ 
+function HUD({
   configId,
-   stageId, 
-   timeRemaining,
-    movesRemaining, 
-    tokens,
-    freezeActive,
-    streakCount = 0,
-    freeHintCharges = 0,
-    streakBonusTokens = 0,
- }) {
-   const isLowTime = timeRemaining > 0 && timeRemaining <= 15 && !freezeActive;
-   const streakProgress = Math.max(0, Math.min(5, streakCount));
-   return (
+  stageId,
+  timeRemaining,
+  movesRemaining,
+  tokens,
+  freezeActive,
+  streakCount = 0,
+  freeHintCharges = 0,
+  streakBonusTokens = 0,
+}) {
+  const isLowTime = timeRemaining > 0 && timeRemaining <= 15 && !freezeActive;
+  const streakProgress = Math.max(0, Math.min(5, streakCount));
+  return (
     <section className="hud">
       <div className="hud__item">Stage: {stageId}</div>
-      <div className="hud__item">Difficulty: {configId}</div> 
+      <div className="hud__item">Difficulty: {configId}</div>
       <div
         className={`hud__item hud__time ${freezeActive ? "hud__time--frozen" : ""} ${isLowTime ? "hud__time--low" : ""}`}
         title={freezeActive ? "Timer frozen" : undefined}
       >
         Time: {timeRemaining}
         {freezeActive && <span className="hud__time-icon" aria-hidden> ❄</span>}
-      </div>  
+      </div>
+      <div className="hud__item">Moves: {movesRemaining}</div>
       <div className="hud__item hud__tokens">
         Tokens: {tokens}
         {streakBonusTokens > 0 && (
@@ -32,8 +33,7 @@ function HUD({
           </span>
         )}
       </div>
-      
-      
+
       <div className="hud__item hud__streak" title="Clear 5 stages in a row without retrying for +5 tokens and 1 free Hint">
         <div className="hud__streak-row">
           <span>Streak</span>
@@ -50,4 +50,3 @@ function HUD({
 }
 
 export default HUD;
-
