@@ -1,6 +1,6 @@
 # Validates telemetry event shapes and values.
 # Returns anomalies for invalid payloads.
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List
 
 from models import ConfigId, EventType
@@ -32,7 +32,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
                 "anomaly_type": anomaly_type,
                 "detected_by": detected_by,
                 "resolution_status": "open",
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "details": details,
             }
         )
