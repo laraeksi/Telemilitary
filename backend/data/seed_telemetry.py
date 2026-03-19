@@ -2,7 +2,7 @@
 # Used to populate demo dashboards.
 import json
 import random
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from logic.telemetry import validate_event
 from models import ConfigId, EventType
@@ -21,24 +21,40 @@ def seed_telemetry_if_empty(conn):
 # Insert deterministic demo telemetry data.
 def seed_telemetry(conn):
     """
-    Sprint 1 seeded telemetry dataset:
-    - 15 pseudonymous users
-    - 30 sessions across easy/balanced/hard
-    - Stage 1 always completes
-    - Stage 2 attempted ~60% of the time with ~50% failure
-    - Seeds a few decisions and a few anomalies
+    Sprint 2 seeded telemetry dataset:
+    - 40 pseudonymous users
+    - 80 sessions across easy/balanced/hard
     """
     rng = random.Random(20260211)  # deterministic seed
     # Base timestamp for seeded sessions.
     base_time = datetime(2026, 2, 1, 12, 0, 0)
 
     # Pseudonymous user IDs (no real personal data).
-    users = [f"u_{i:03d}" for i in range(1, 40)]
+    users = [f"u_{i:03d}" for i in range(1, 103)]
     # Rotate through difficulty configs.
     configs = [ConfigId.EASY.value, ConfigId.BALANCED.value, ConfigId.HARD.value]
 
     # Number of demo sessions to seed.
-    session_count = 120
+    session_count = 600
+
+    # Target completion rates for each difficulty config.
+    TARGET_COMPLETION = {
+        "easy": [0.995, 0.98, 0.965, 0.95, 0.935, 0.92, 0.905, 0.89, 0.875, 0.86],
+        "balanced": [0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.79, 0.76, 0.73, 0.70],
+        "hard": [0.96, 0.92, 0.88, 0.84, 0.80, 0.76, 0.72, 0.68, 0.64, 0.60],
+    }
+    
+    stage_counts = {}
+    
+    def choose_pass_fail(config_id, stage_id):
+        key = (config_id, stage_id)
+        c, f = stage_counts.get(key, (0, 0))
+        target = TARGET_COMPLETION[config_id][stage_id - 1]
+        rate_if_complete = (c + 1) / (c + f + 1)
+        rate_if_fail = c / (c + f + 1)
+        choose_fail = abs(rate_if_fail - target) < abs(rate_if_complete - target)
+        stage_counts[key] = (c + (0 if choose_fail else 1), f + (1 if choose_fail else 0))
+        return choose_fail
 
     for i in range(session_count):
         # Create session IDs like s_0001, s_0002.
@@ -46,9 +62,8 @@ def seed_telemetry(conn):
         user_id = rng.choice(users) # Picks a user at random 
         config_id = configs[i % 3]
         # Config-dependent behaviour (makes compare charts meaningful)
-        attempt_stage2_prob = {"easy": 0.85, "balanced": 0.70, "hard": 0.60}[config_id]
-        stage2_fail_prob    = {"easy": 0.45, "balanced": 0.50, "hard": 0.65}[config_id]
-        quit_prob           = {"easy": 0.04, "balanced": 0.06, "hard": 0.08}[config_id]
+        attempt_stage2_prob = {"easy": 0.98, "balanced": 0.92, "hard": 0.90}[config_id]
+        quit_prob           = {"easy": 0.01, "balanced": 0.02, "hard": 0.03}[config_id]
 
         # When stage2 fails, what share are move-based fails (vs time-based)?
         move_fail_share     = {"easy": 0.40, "balanced": 0.45, "hard": 0.50}[config_id]
@@ -218,8 +233,8 @@ def seed_telemetry(conn):
         stg1_moves_remaining = rng.randint(1, 6)
         stg1_total_moves_used = rng.randint(7, 13)
 
-        stg1_fail_prob = {"easy": 0.08, "balanced": 0.12, "hard": 0.18}[config_id]
-        stg1_failed = rng.random() < stg1_fail_prob
+        # Stage 1: assign pass/fail so observed completion tracks target (smooth decrease).
+        stg1_failed = choose_pass_fail(config_id, 1)
 
         if stg1_failed:
             total_fails += 1
@@ -326,7 +341,7 @@ def seed_telemetry(conn):
 
                 outcome = "quit"
             else:
-                stage2_failed = rng.random() < stage2_fail_prob
+                stage2_failed = choose_pass_fail(config_id, 2)
                 stg2_end_time = stg2_start_time + timedelta(seconds=rng.randint(30, 70))
 
                 if stage2_failed:
@@ -402,6 +417,105 @@ def seed_telemetry(conn):
                         ),
                     )
                     stages_completed = 2
+
+        # Seed later stages (3–10) with lighter coverage so metrics and fairness
+        # charts have data across all 10 stages per config.
+        max_stage_reached = stages_completed
+        for stage_id in range(3, 11):
+            # Simple decreasing chance to even attempt higher stages.
+            # If the player previously failed or quit, stop.
+            if outcome != "completed":
+                break
+
+            # Attempt probability: more sessions progress to later stages; hard raised so more finish, still easy > balanced > hard.
+            base_attempt = {"easy": 0.99, "balanced": 0.94, "hard": 0.91}[config_id]
+            attempt_prob = max(0.60, base_attempt - (stage_id - 2) * {"easy": 0.010, "balanced": 0.018, "hard": 0.022}[config_id])
+            if rng.random() >= attempt_prob:
+                break
+
+            stage_start_time = started_at + timedelta(
+                seconds=90 + (stage_id - 1) * 40 + rng.randint(0, 20)
+            )
+            insert_event(
+                conn,
+                build_event(
+                    f"{session_id}_stg{stage_id}_start",
+                    session_id,
+                    user_id,
+                    stage_start_time,
+                    stage_id,
+                    config_id,
+                    EventType.STAGE_START.value,
+                    {
+                        "timer_seconds": 40 + stage_id * 4,
+                        "move_limit": 14 + stage_id * 2,
+                        "card_count": 8 if stage_id <= 2 else 10 + (stage_id - 2) * 2,
+                        "token_start": 10,
+                    },
+                ),
+            )
+
+            # Assign pass/fail so observed completion tracks target (smooth decrease by stage).
+            stage_failed = choose_pass_fail(config_id, stage_id)
+            stage_end_time = stage_start_time + timedelta(seconds=rng.randint(30, 90))
+
+            if stage_failed:
+                is_move_fail = rng.random() < 0.5
+                if is_move_fail:
+                    fail_payload = {
+                        "fail_reason": "moves",
+                        "time_remaining": rng.randint(1, 10),
+                        "moves_remaining": rng.choice([0, -1]),
+                        "tokens_earned": 0,
+                        "tokens_spent": 0,
+                    }
+                else:
+                    fail_payload = {
+                        "fail_reason": "time",
+                        "time_remaining": rng.randint(-4, -1),
+                        "moves_remaining": rng.randint(-3, 1),
+                        "tokens_earned": 0,
+                        "tokens_spent": 0,
+                    }
+
+                insert_event(
+                    conn,
+                    build_event(
+                        f"{session_id}_stg{stage_id}_fail",
+                        session_id,
+                        user_id,
+                        stage_end_time,
+                        stage_id,
+                        config_id,
+                        EventType.STAGE_FAIL.value,
+                        fail_payload,
+                    ),
+                )
+                total_fails += 1
+                outcome = "failed"
+            else:
+                insert_event(
+                    conn,
+                    build_event(
+                        f"{session_id}_stg{stage_id}_complete",
+                        session_id,
+                        user_id,
+                        stage_end_time,
+                        stage_id,
+                        config_id,
+                        EventType.STAGE_COMPLETE.value,
+                        {
+                            "time_remaining": rng.randint(1, 10),
+                            "moves_remaining": rng.randint(0, 6),
+                            "total_moves_used": rng.randint(10, 22),
+                            "tokens_earned": 2,
+                            "tokens_spent": 0,
+                        },
+                    ),
+                )
+                max_stage_reached = stage_id
+
+        stages_completed = max(stages_completed, max_stage_reached)
         
         # Update session summary row to reflect what actually happened (optional but good)
         conn.execute(
@@ -412,6 +526,110 @@ def seed_telemetry(conn):
             """,
             (outcome, total_fails, stages_completed, session_id),
         )
+
+    # Ensure every (config, stage) has at least one run so the dashboard shows all 10 stages.
+    for config_id in configs:
+        for stage_id in range(1, 11):
+            row = conn.execute(
+                "SELECT COUNT(*) as c FROM events WHERE config_id = ? AND stage_id = ?",
+                (config_id, stage_id),
+            ).fetchone()
+            if row and row["c"] > 0:
+                continue
+
+            seed_session_id = f"s_seed_{config_id}_chain_{stage_id:02d}"
+            seed_user_id = f"u_seed_{config_id}"
+            seed_start = base_time + timedelta(days=3, minutes=stage_id * 10)
+
+            # One session that plays stages 1, 2, … stage_id in order (each stage: start then complete or fail).
+            will_fail_last = (stage_id >= 3) and (stage_id % 3 == 0)  # fail sometimes on last stage
+            outcome = "failed" if will_fail_last else "completed"
+            total_fails = 1 if will_fail_last else 0
+
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO sessions
+                (session_id, user_id, config_id, start_time, end_time,
+                 outcome, total_time_seconds, total_fails,
+                 total_tokens_spent, stages_completed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    seed_session_id,
+                    seed_user_id,
+                    config_id,
+                    seed_start.isoformat() + "Z",
+                    (seed_start + timedelta(minutes=stage_id + 1)).isoformat() + "Z",
+                    outcome,
+                    60 * (stage_id + 1),
+                    total_fails,
+                    0,
+                    stage_id if not will_fail_last else stage_id - 1,
+                ),
+            )
+
+            t = seed_start
+            for s in range(1, stage_id + 1):
+                t = t + timedelta(seconds=30)
+                insert_event(
+                    conn,
+                    build_event(
+                        f"{seed_session_id}_stg{s}_start",
+                        seed_session_id,
+                        seed_user_id,
+                        t,
+                        s,
+                        config_id,
+                        EventType.STAGE_START.value,
+                        {
+                            "timer_seconds": 40 + s * 4,
+                            "move_limit": 14 + s * 2,
+                            "card_count": 8 if s <= 2 else 10 + (s - 2) * 2,
+                            "token_start": 10,
+                        },
+                    ),
+                )
+                t = t + timedelta(seconds=90)
+                if s == stage_id and will_fail_last:
+                    insert_event(
+                        conn,
+                        build_event(
+                            f"{seed_session_id}_stg{s}_fail",
+                            seed_session_id,
+                            seed_user_id,
+                            t,
+                            s,
+                            config_id,
+                            EventType.STAGE_FAIL.value,
+                            {
+                                "fail_reason": "time",
+                                "time_remaining": -3,
+                                "moves_remaining": 0,
+                                "tokens_earned": 0,
+                                "tokens_spent": 0,
+                            },
+                        ),
+                    )
+                else:
+                    insert_event(
+                        conn,
+                        build_event(
+                            f"{seed_session_id}_stg{s}_complete",
+                            seed_session_id,
+                            seed_user_id,
+                            t,
+                            s,
+                            config_id,
+                            EventType.STAGE_COMPLETE.value,
+                            {
+                                "time_remaining": 10,
+                                "moves_remaining": 4,
+                                "total_moves_used": 16,
+                                "tokens_earned": 2,
+                                "tokens_spent": 0,
+                            },
+                        ),
+                    )    
 
     # Seed a few designer decisions (Sprint 1 scale)
     seed_decisions(conn, base_time)
@@ -465,7 +683,7 @@ def insert_event(conn, event):
                     "anomaly_type": "invalid_sequence",
                     "detected_by": "temporal_check",
                     "resolution_status": "open",
-                    "created_at": datetime.utcnow().isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "details": {"reason": "complete_or_fail_without_start"},
                 }
             )
