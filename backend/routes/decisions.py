@@ -11,7 +11,7 @@ from datetime import datetime
 
 from flask import Blueprint, request
 from data.db import get_connection
-from utils.auth import require_designer
+from utils.auth import require_dashboard, require_designer
 
 # Blueprint for designer decision-log endpoints
 bp = Blueprint("decisions", __name__)
@@ -20,10 +20,10 @@ bp = Blueprint("decisions", __name__)
 # List decision log entries.
 @bp.get("/api/decisions")
 def list_decisions():
-    # Designer-only endpoint to list balancing decisions
+    # Dashboard endpoint to list balancing decisions (designer or viewer)
     # Can optionally filter by config_id
     # Blocks non-designer roles.
-    auth_error = require_designer()
+    auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
