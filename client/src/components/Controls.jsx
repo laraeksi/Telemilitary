@@ -39,8 +39,8 @@ function Controls({ onPeek, onFreeze, onUndo, onRetry, onQuit, costs, tokens }) 
         <span className="controls__label">Undo</span>
         <span className="controls__meta">U • -{costs.undo}</span>
       </button>
-      <button type="button" onClick={onRetry}>Retry</button>
-      <button type="button" onClick={onQuit}>Quit</button>
+       <button type="button" onClick={withClick(onRetry)}>Retry</button>
+      <button type="button" onClick={withClick(onQuit)}>Quit</button>
     </section>
   );
 }
