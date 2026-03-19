@@ -2,21 +2,34 @@
 // Maps deck data into Card components.
 import Card from "./Card";
 
-function Board({ deck, flippedUids, matchedUids, onFlip }) {
+function Board({
+  deck,
+  rows,
+  cols,
+  flippedUids,
+  matchedUids,
+  mismatchUids = [],
+  replayUids = [],
+  onFlip,
+}) {
   return (
-    <section className="board" aria-label="Game board">
-      {/* Render each card from the shuffled deck */}
+    <section
+      className="board"
+      aria-label="Game board"
+      style={{
+        "--board-cols": cols,
+        "--board-rows": rows,
+      }}
+    >
       {deck.map((card) => (
         <Card
           key={card.uid}
-          // Image + id for the card face.
           imgSrc={card.img}
           alt={card.id}
-          // Card is flipped if in the flipped list.
           flipped={flippedUids.includes(card.uid)}
-          // Card is matched if it exists in the Set.
           matched={matchedUids.has(card.uid)}
-          // Pass uid back to the parent handler.
+          shaking={mismatchUids.includes(card.uid)}
+          ghostFlipped={replayUids.includes(card.uid)}
           onFlip={() => onFlip(card.uid)}
         />
       ))}
