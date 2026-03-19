@@ -1,25 +1,44 @@
 // Action buttons for in-game power-ups.
 // Disables buttons when tokens are low.
+import{playClick} from "../audio/sounds";
+
 function Controls({ onPeek, onFreeze, onUndo, onRetry, onQuit, costs, tokens }) {
+  const withClick = (fn) => () => {
+    playClick();
+    fn?.();
+  };
   return (
     <section className="controls">
-      {/* Power-ups cost tokens to use */}
-      <button type="button" onClick={onPeek} disabled={tokens < costs.peek}>
-        {/* Hint shows one pair briefly */}
-        Hint (-{costs.peek})
+      <button
+        type="button"
+        className="controls__powerup"
+        onClick={withClick(onPeek)}
+        disabled={tokens < costs.peek}
+        title="Hint shortcut: H"
+      >
+        <span className="controls__label">Hint</span>
+        <span className="controls__meta">H • -{costs.peek}</span>
       </button>
-
-      <button type="button" onClick={onFreeze} disabled={tokens < costs.freeze}>
-        {/* Freeze pauses the timer */}
-        Freeze (-{costs.freeze})
+      <button
+        type="button"
+        className="controls__powerup"
+        onClick={withClick(onFreeze)}
+        disabled={tokens < costs.freeze}
+        title="Freeze shortcut: F"
+      >
+        <span className="controls__label">Freeze</span>
+        <span className="controls__meta">F • -{costs.freeze}</span>
       </button>
-
-      <button type="button" onClick={onUndo} disabled={tokens < costs.undo}>
-        {/* Undo reverts the last mismatch */}
-        Undo (-{costs.undo})
+      <button
+        type="button"
+        className="controls__powerup"
+        onClick={withClick(onUndo)}
+        disabled={tokens < costs.undo}
+        title="Undo shortcut: U"
+      >
+        <span className="controls__label">Undo</span>
+        <span className="controls__meta">U • -{costs.undo}</span>
       </button>
-
-      {/* Non-powerup actions */}
       <button type="button" onClick={onRetry}>Retry</button>
       <button type="button" onClick={onQuit}>Quit</button>
     </section>
