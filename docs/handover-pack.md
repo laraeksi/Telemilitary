@@ -15,12 +15,14 @@ Useful existing docs:
 
 ## 2) Quick Start (Local Run)
 
+### 2A)
+
 Prerequisites:
 
 - Python 3.11+
 - Node 18+
 
-Backend:
+Backend (first time):
 
 ```bash
 cd backend
@@ -28,7 +30,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Client:
+Client (first time):
 
 ```bash
 cd client
@@ -43,6 +45,13 @@ GET http://localhost:5000/api/health
 ```
 
 On first run, `init_db()` in `backend/data/db.py` sets up the schema and seed data automatically (including telemetry seed data).
+
+### 2B) Run tests
+
+```bash
+cd backend
+python -m pytest
+```
 
 ## 3) Operations and Maintenance Runbook
 
