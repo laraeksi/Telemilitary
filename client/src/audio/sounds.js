@@ -13,12 +13,42 @@ let bgMusicFallback = null; // Web Audio loop when no file
 let bgMusicTempo = 1;
 let bgMusicVolume = BG_MUSIC_BASE_VOLUME;
 let bgMusicStress = 0;
+let audioUnlocked = false;
 
 function getContext() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
   }
   return audioContext;
+}
+
+/**
+ * Unlock audio on mobile browsers after a real user gesture.
+ * Safe to call multiple times; no-op after first successful unlock.
+ */
+export async function unlockAudio() {
+  if (audioUnlocked) return true;
+  try {
+    const ctx = getContext();
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    // Warm up the output with a near-silent short tone.
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.value = 0.0001;
+    osc.frequency.value = 440;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.01);
+
+    audioUnlocked = true;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getSfxEnabled() {
@@ -467,6 +497,7 @@ function stopFallbackMusic() {
 /** Background music: try music.ogg, then fall back to synthesized loop. Call after user gesture. */
 export function startBackgroundMusic() {
   if (!getMusicEnabled()) return;
+  // On mobile, this should happen after a user gesture + unlockAudio().
   if (bgMusicFallback) return;
   if (bgMusic) {
     bgMusic.volume = bgMusicVolume;

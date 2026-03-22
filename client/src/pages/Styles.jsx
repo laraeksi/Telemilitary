@@ -4,6 +4,14 @@ import { Link } from "react-router-dom";
 const THEME_KEY = "style_theme_v1";
 const UNLOCKS_KEY = "style_unlocked_v1";
 const TOKEN_KEY = "player_tokens_v1";
+const MIN_INITIAL_TOKENS = 5;
+
+function readTokenBank() {
+  const raw = localStorage.getItem(TOKEN_KEY);
+  if (raw === null || raw === "") return MIN_INITIAL_TOKENS;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : MIN_INITIAL_TOKENS;
+}
 
 const THEMES = [
   { id: "classic", name: "Classic", desc: "Default look.", cost: 0 },
@@ -26,7 +34,7 @@ function readJson(key, fallback) {
 function Styles() {
   const [selected, setSelected] = useState(() => localStorage.getItem(THEME_KEY) || "classic");
   const [unlocked, setUnlocked] = useState(() => new Set(readJson(UNLOCKS_KEY, ["classic"])));
-  const [bank, setBank] = useState(() => Number(localStorage.getItem(TOKEN_KEY) || 0));
+  const [bank, setBank] = useState(() => readTokenBank());
 
   useEffect(() => {
     // Ensure classic is always unlocked.

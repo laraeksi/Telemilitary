@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Modal from "../components/Modal";
+import { unlockAudio } from "../audio/sounds";
+import { apiUrl } from "../api/base";
 
 const CONSENT_KEY = "telemetry_consent_v1";
 
 function Menu() {
   const [consentMode, setConsentMode] = useState("none"); // "ask" | "info" | "none"
+  const [maintainerOpen, setMaintainerOpen] = useState(false);
+  const [healthStatus, setHealthStatus] = useState("idle"); // "idle" | "loading" | "ok" | "error"
 
   useEffect(() => {
     // Restore previous consent choice if it exists.
@@ -21,21 +25,52 @@ function Menu() {
     }
   }, []);
 
-  function acceptConsent() {
+  useEffect(() => {
+    if (!maintainerOpen) return;
+    let cancelled = false;
+    fetch(apiUrl("/api/health"))
+      .then((res) => res.json())
+      .then((body) => {
+        if (cancelled) return;
+        setHealthStatus(body && body.ok === true ? "ok" : "error");
+      })
+      .catch(() => {
+        if (!cancelled) setHealthStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [maintainerOpen]);
+
+  async function acceptConsent() {
+    await unlockAudio();
     // Persist consent for future sessions.
     localStorage.setItem(CONSENT_KEY, "yes");
     setConsentMode("none");
   }
 
-  function declineConsent() {
+  async function declineConsent() {
+    await unlockAudio();
     // Remember opt-out.
     localStorage.setItem(CONSENT_KEY, "no");
     setConsentMode("info");
   }
 
-  function closeInfo() {
+  async function closeInfo() {
+    await unlockAudio();
     // Hide the info-only modal.
     setConsentMode("none");
+  }
+
+  async function openMaintainer() {
+    await unlockAudio();
+    setHealthStatus("loading");
+    setMaintainerOpen(true);
+  }
+
+  function closeMaintainer() {
+    setMaintainerOpen(false);
+    setHealthStatus("idle");
   }
 
   return (
@@ -50,7 +85,7 @@ function Menu() {
 
           <div className="action-row">
             <Link to="/difficulty">
-              <button type="button">Player</button>
+              <button type="button" onClick={() => unlockAudio()}>Player</button>
             </Link>
 
             <Link to="/designer">
@@ -58,6 +93,17 @@ function Menu() {
                 Dashboard
               </button>
             </Link>
+          </div>
+
+          <div className="action-row" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              data-variant="ghost"
+              aria-label="Maintainer and operations information"
+              onClick={openMaintainer}
+            >
+              Maintainer / ops
+            </button>
           </div>
         </section>
       </div>
@@ -90,6 +136,43 @@ function Menu() {
               </div>
             </>
           )}
+        </Modal>
+      )}
+
+      {maintainerOpen && (
+        <Modal title="Maintainer & operations" zIndex={60}>
+          <p style={{ fontSize: 14, lineHeight: 1.5 }}>
+            Maintainers run <strong>deployments</strong>, the <strong>telemetry pipeline</strong> (Flask + SQLite),
+            and <strong>automated tests</strong>. This is not a login role — see the repository handover docs.
+          </p>
+          <p style={{ marginTop: 12, fontSize: 14 }}>
+            <strong>API health</strong>{" "}
+            {healthStatus === "loading" && <span aria-live="polite">Checking…</span>}
+            {healthStatus === "ok" && (
+              <span style={{ color: "#0a7a2f" }} aria-live="polite">
+                OK (GET /api/health)
+              </span>
+            )}
+            {healthStatus === "error" && (
+              <span style={{ color: "#a30" }} aria-live="polite">
+                Unreachable — start the backend (<code>python app.py</code> in <code>backend/</code>)
+              </span>
+            )}
+          </p>
+          <ul style={{ fontSize: 14, lineHeight: 1.6, paddingLeft: 20 }}>
+            <li>
+              Run tests: <code>python -m pytest</code> from <code>backend/</code>
+            </li>
+            <li>
+              Docs: <code>docs/deployment_guide.md</code>, <code>docs/maintainer-handover.md</code>
+            </li>
+            <li>Secrets: use environment variables (never commit keys).</li>
+          </ul>
+          <div style={{ marginTop: 16 }}>
+            <button type="button" onClick={closeMaintainer}>
+              Close
+            </button>
+          </div>
         </Modal>
       )}
     </main>

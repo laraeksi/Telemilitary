@@ -1,6 +1,8 @@
 <!-- Dependency and data inventory. -->
 <!-- Summarizes libraries and data assets. -->
-# Software and Data Inventory (CW1)
+# Software and Data Inventory (CW1 / CW2)
+
+See also [`cw2-spec-coverage.md`](cw2-spec-coverage.md) for how this inventory maps to submission requirements. Expand version pins below when preparing a **PDF appendix**.
 
 ## Dependencies
 <!-- Versions are pinned in requirements/package-lock where applicable -->

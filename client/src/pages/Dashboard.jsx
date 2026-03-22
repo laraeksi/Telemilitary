@@ -53,6 +53,17 @@ const formatPercent = (value) => `${(value * 100).toFixed(1)}%`;
 const formatSeconds = (value) => `${value.toFixed(1)}s`;
 const formatTokens = (value) => `${value.toFixed(1)} tokens`;
 
+function decisionChangeLabel(ch) {
+  if (!ch || typeof ch !== "object") return "Update recorded";
+  if (typeof ch.summary === "string" && ch.summary.trim()) return ch.summary.trim();
+  if (typeof ch.description === "string" && ch.description.trim()) return ch.description.trim();
+  const skip = new Set(["summary", "description"]);
+  const parts = Object.entries(ch)
+    .filter(([k]) => !skip.has(k))
+    .map(([k, v]) => `${k}: ${v}`);
+  return parts.length ? parts.join(", ") : "Update recorded";
+}
+
 function BarChart({ data, height = 18, valueFormatter, scaleMax }) {
   if (!data?.length) return <p>No data yet.</p>;
 
@@ -138,14 +149,18 @@ function BarChart({ data, height = 18, valueFormatter, scaleMax }) {
   );
 }
 
-function LineChart({ data, height = 180, color = "#37b24d", valueFormatter }) {
+function LineChart({ data, height = 180, color = "#37b24d", valueFormatter, yDomainMin, yDomainMax }) {
   if (!data?.length) return <p>No data yet.</p>;
   // Padding keeps axes labels visible.
   const padding = 36;
   const width = 560;
   const values = data.map((d) => d.value);
-  const minValue = Math.min(...values, 0);
-  const maxValue = Math.max(...values, 1);
+  const dataMax = Math.max(...values);
+  // Default: scale Y from min(values)..max(values) (legacy). Optional fixed domain (e.g. yDomainMin=0)
+  // makes absolute differences in seconds easier to read instead of zooming into a tight band.
+  const minValue = yDomainMin !== undefined ? yDomainMin : Math.min(...values, 0);
+  const maxValue =
+    yDomainMax !== undefined ? yDomainMax : Math.max(dataMax, minValue + 1e-6, 1);
   const range = maxValue - minValue || 1;
 
   const formatValue =
@@ -204,6 +219,78 @@ function LineChart({ data, height = 180, color = "#37b24d", valueFormatter }) {
       })}
     </svg>
   );
+}
+
+/** Easy vs hard completion rates on the same scale (0–100%). Shows separation; gap bars show the difference. */
+function CompareDifficultyLines({ stages }) {
+  if (!stages?.length) return <p>No comparison data yet.</p>;
+  const padding = 36;
+  const width = 560;
+  const height = 200;
+  const minValue = 0;
+  const maxValue = 1;
+  const range = maxValue - minValue || 1;
+  const n = stages.length;
+  const xDenom = Math.max(n - 1, 1);
+  const formatPct = (v) => `${(v * 100).toFixed(1)}%`;
+
+  const line = (getter) =>
+    stages
+      .map((s, i) => {
+        const v = _clamp01(getter(s));
+        const x = padding + (i / xDenom) * (width - padding * 2);
+        const y = height - padding - ((v - minValue) / range) * (height - padding * 2);
+        return `${x},${y}`;
+      })
+      .join(" ");
+
+  const easyLine = line((s) => s.by_config?.easy?.completion_rate ?? 0);
+  const hardLine = line((s) => s.by_config?.hard?.completion_rate ?? 0);
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1.0];
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 16, fontSize: 12, marginBottom: 8, alignItems: "center" }}>
+        <span>
+          <span style={{ color: "#2f9e44", fontWeight: 600 }}>—</span> Easy clear %
+        </span>
+        <span>
+          <span style={{ color: "#c92a2a", fontWeight: 600 }}>—</span> Hard clear %
+        </span>
+      </div>
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
+        {yTicks.map((tick, idx) => {
+          const y = height - padding - ((tick - minValue) / range) * (height - padding * 2);
+          return (
+            <g key={`yl-${idx}`}>
+              <line x1={padding} x2={width - padding} y1={y} y2={y} stroke="#ececec" />
+              <text x={4} y={y + 4} fontSize="10" fill="#6b6b6b">
+                {formatPct(tick)}
+              </text>
+            </g>
+          );
+        })}
+        <polyline points={easyLine} fill="none" stroke="#2f9e44" strokeWidth="2.5" />
+        <polyline points={hardLine} fill="none" stroke="#c92a2a" strokeWidth="2.5" />
+        {stages.map((s, i) => {
+          const x = padding + (i / xDenom) * (width - padding * 2);
+          const show = n <= 10 || i % 2 === 0;
+          return show ? (
+            <text key={s.stage_id} x={x} y={height - 8} fontSize="10" fill="#6b6b6b" textAnchor="middle">
+              {s.stage_id}
+            </text>
+          ) : null;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function _clamp01(v) {
+  const n = Number(v);
+  if (Number.isNaN(n)) return 0;
+  return Math.max(0, Math.min(1, n));
 }
 
 function FunnelTable({ stages }) {
@@ -361,6 +448,12 @@ function Dashboard() {
   const [decisionEvidence, setDecisionEvidence] = useState("");
   const [decisionLog, setDecisionLog] = useState([]);
 
+  const [editableStages, setEditableStages] = useState([]);
+  const [paramEditStageId, setParamEditStageId] = useState(1);
+  const [paramSaving, setParamSaving] = useState(false);
+  const [paramLoadStatus, setParamLoadStatus] = useState("loading");
+  const [paramLoadMessage, setParamLoadMessage] = useState("");
+
   const stageOptions = useMemo(() => {
     const ids = new Set();
   (funnel?.stages || []).forEach((s) => ids.add(s.stage_id));
@@ -408,18 +501,38 @@ function Dashboard() {
     }
   }
 
+  async function loadParameters() {
+    setParamLoadStatus("loading");
+    setParamLoadMessage("");
+    try {
+      const data = await fetchJson(`/api/balancing/parameters?config_id=${configId}`);
+      const stages = data.editable?.stages || [];
+      setEditableStages(stages);
+      if (!stages.length) {
+        setParamLoadStatus("error");
+        setParamLoadMessage("No stage parameters were returned. Ensure the server database has been initialised.");
+      } else {
+        setParamLoadStatus("ready");
+      }
+    } catch (e) {
+      setEditableStages([]);
+      setParamLoadStatus("error");
+      setParamLoadMessage(e?.message || "Could not load stage parameters.");
+    }
+  }
+
   async function loadDecisionLog(selectedConfig) {
     try {
       const data = await fetchJson(`/api/decisions?config_id=${selectedConfig}`);
       const mapped = (data.decisions || []).map((entry) => ({
         id: entry.decision_id,
         stageId: entry.stage_id,
-        change: entry.change?.summary || entry.change?.description || "Update recorded",
+        change: decisionChangeLabel(entry.change),
         rationale: entry.rationale || "",
         evidence:
           Array.isArray(entry.evidence_links) && entry.evidence_links.length > 0
             ? entry.evidence_links.join(", ")
-            : "No specific chart noted.",
+            : null,
         timestamp: entry.created_at
           ? new Date(entry.created_at).toLocaleString()
           : "Unknown time",
@@ -484,7 +597,15 @@ function Dashboard() {
     loadMetrics(configId);
     loadSuggestions(configId);
     loadDecisionLog(configId);
+    loadParameters();
   }, [configId]);
+
+  useEffect(() => {
+    if (!editableStages.length) return;
+    if (!editableStages.some((s) => s.stage_id === paramEditStageId)) {
+      setParamEditStageId(editableStages[0].stage_id);
+    }
+  }, [editableStages, paramEditStageId]);
 
 // 2) Keep simStageId valid whenever stageOptions changes
 useEffect(() => {
@@ -546,6 +667,39 @@ useEffect(() => {
     R6_PROGRESSION_DROPOFF: "This is a point where a lot of players seem to drop off.",
   };
 
+  async function saveStageParameters(e) {
+    e.preventDefault();
+    const stage = editableStages.find((s) => s.stage_id === paramEditStageId);
+    if (!stage || isViewer) return;
+    setParamSaving(true);
+    setError("");
+    try {
+      await fetchJson(`/api/game/configs/${configId}/stages/${paramEditStageId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          card_count: stage.card_count,
+          timer_seconds: stage.timer_seconds,
+          move_limit: stage.move_limit,
+          mismatch_penalty_seconds: stage.mismatch_penalty_seconds,
+          helpers: {
+            peek_cost: stage.helpers?.peek_cost,
+            freeze_cost: stage.helpers?.freeze_cost,
+            shuffle_cost: stage.helpers?.shuffle_cost,
+          },
+          token_rules: {
+            per_match: stage.token_rules?.per_match,
+            on_complete: stage.token_rules?.on_complete,
+          },
+        }),
+      });
+      await loadParameters();
+    } catch (err) {
+      setError(err.message || "Failed to save stage parameters.");
+    } finally {
+      setParamSaving(false);
+    }
+  }
+
   async function addDecision(e) {
     e.preventDefault();
     const trimmedChange = decisionChange.trim();
@@ -575,7 +729,16 @@ useEffect(() => {
 
   const isViewer = getDashboardRole() === "viewer";
 
+  const paramStage = editableStages.find((s) => s.stage_id === paramEditStageId);
+
   return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#ffffff",
+        color: "#0f172a",
+      }}
+    >
     <main style={{ padding: 24, display: "grid", gap: 16 }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
@@ -633,15 +796,30 @@ useEffect(() => {
       </DataBlock>
 
         <DataBlock title="2) Where Players Struggle">
+          <p style={{ fontSize: 12, opacity: 0.8, marginTop: 0 }}>
+            Each bar is <strong>fails ÷ stage starts</strong>. You want the highest bar on the <strong>last</strong> stage:
+            demo seeding is tuned so stage 10 is the worst step-up. Raw rates can still wobble when very few runs reach a
+            late stage (small sample).
+          </p>
           <BarChart data={spikeBars} valueFormatter={formatPercent} />
         </DataBlock>
 
         <DataBlock title="3) Time Spent by Stage">
-          <LineChart data={progressionTime} valueFormatter={formatSeconds} />
+          <p style={{ fontSize: 12, opacity: 0.8, marginTop: 0 }}>
+            Average seconds from stage start to a <strong>successful clear</strong> (failed runs are excluded). The
+            vertical scale starts at 0s so later stages do not look “flat” just because every stage finishes in a
+            similar band of time.
+          </p>
+          <LineChart data={progressionTime} valueFormatter={formatSeconds} yDomainMin={0} />
         </DataBlock>
 
         <DataBlock title="4) Net Tokens by Stage">
-          <LineChart data={progressionTokens} color="#ff922b" valueFormatter={formatTokens} />
+          <p style={{ fontSize: 12, opacity: 0.8, marginTop: 0 }}>
+            Average <strong>resource_gain</strong> minus <strong>resource_spend</strong> on <strong>successful clears</strong>{" "}
+            only. Gains include per-match rewards plus the stage-completion bonus — later stages have more pairs, so totals
+            should grow; spending on helpers (especially on harder stages) creates dips.
+          </p>
+          <LineChart data={progressionTokens} color="#ff922b" valueFormatter={formatTokens} yDomainMin={0} />
         </DataBlock>
 
         <DataBlock title="5) Fairness Check">
@@ -652,11 +830,256 @@ useEffect(() => {
         </DataBlock>
 
         <DataBlock title="6) Easy vs Hard Comparison">
+          <p style={{ fontSize: 12, opacity: 0.85, marginTop: 0 }}>
+            Each rate is <strong>clears ÷ starts for that stage only</strong> (people who never reached stage 7 do not
+            count toward stage 7). Easy and hard therefore measure <strong>different cohorts</strong> at late stages:
+            hard mode players who still reach stage 9 are usually stronger, so their clear rate can stay high and the{" "}
+            <strong>easy−hard gap</strong> does not have to grow smoothly with stage number. The line chart shows both
+            difficulties on the same 0–100% scale; the bars show the gap (easy − hard) per stage.
+          </p>
+          <CompareDifficultyLines stages={compare?.stages} />
+          <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 8, marginTop: 0 }}>
+            Gap (easy clear % minus hard clear %)
+          </p>
           <BarChart data={compareBars} valueFormatter={formatPercent} />
         </DataBlock>
       </div>
 
       <section style={{ display: "grid", gap: 16 }}>
+        <DataBlock title="Stage parameters (per difficulty & stage)">
+          <p style={{ marginTop: 0, fontSize: 13, opacity: 0.85 }}>
+            Values are loaded from the server database for the selected difficulty (config). Adjust timing, board size,
+            helper token costs, and token reward rules for one stage at a time. Saving writes changes back to the
+            database (designers only; viewers see this section read-only).
+          </p>
+          {paramLoadStatus === "loading" && (
+            <p style={{ fontSize: 13, opacity: 0.8 }}>Loading parameters…</p>
+          )}
+          {paramLoadStatus === "error" && (
+            <div style={{ fontSize: 13 }}>
+              <p style={{ color: "#b00020", marginTop: 0 }}>{paramLoadMessage}</p>
+              <button type="button" onClick={() => loadParameters()}>
+                Retry
+              </button>
+            </div>
+          )}
+          {paramLoadStatus === "ready" && editableStages.length > 0 ? (
+            <form onSubmit={saveStageParameters} style={{ display: "grid", gap: 10, maxWidth: 480 }}>
+              <label>
+                Stage
+                <select
+                  value={paramEditStageId}
+                  onChange={(e) => setParamEditStageId(Number(e.target.value))}
+                  style={{ marginLeft: 8 }}
+                  disabled={isViewer}
+                >
+                  {editableStages.map((s) => (
+                    <option key={s.stage_id} value={s.stage_id}>
+                      Stage {s.stage_id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {paramStage && (
+                <>
+                  <label>
+                    1) Card count
+                    <input
+                      type="number"
+                      min={4}
+                      value={paramStage.card_count ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId ? { ...s, card_count: v } : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                  <label>
+                    2) Timer (seconds)
+                    <input
+                      type="number"
+                      min={1}
+                      value={paramStage.timer_seconds ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId ? { ...s, timer_seconds: v } : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                  <label>
+                    3) Move limit
+                    <input
+                      type="number"
+                      min={1}
+                      value={paramStage.move_limit ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId ? { ...s, move_limit: v } : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                  <label>
+                    4) Mismatch penalty (seconds)
+                    <input
+                      type="number"
+                      min={0}
+                      value={paramStage.mismatch_penalty_seconds ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId ? { ...s, mismatch_penalty_seconds: v } : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                  <label>
+                    5) Peek cost (tokens)
+                    <input
+                      type="number"
+                      min={0}
+                      value={paramStage.helpers?.peek_cost ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId
+                              ? {
+                                  ...s,
+                                  helpers: { ...s.helpers, peek_cost: v },
+                                }
+                              : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                  <label>
+                    6) Freeze cost (tokens)
+                    <input
+                      type="number"
+                      min={0}
+                      value={paramStage.helpers?.freeze_cost ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId
+                              ? {
+                                  ...s,
+                                  helpers: { ...s.helpers, freeze_cost: v },
+                                }
+                              : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                  <label>
+                    7) Undo cost (tokens)
+                    <input
+                      type="number"
+                      min={0}
+                      value={paramStage.helpers?.shuffle_cost ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId
+                              ? {
+                                  ...s,
+                                  helpers: { ...s.helpers, shuffle_cost: v },
+                                }
+                              : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                  <label>
+                    8) Tokens per match
+                    <input
+                      type="number"
+                      min={0}
+                      value={paramStage.token_rules?.per_match ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId
+                              ? {
+                                  ...s,
+                                  token_rules: { ...s.token_rules, per_match: v },
+                                }
+                              : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                  <label>
+                    9) Tokens on stage complete
+                    <input
+                      type="number"
+                      min={0}
+                      value={paramStage.token_rules?.on_complete ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setEditableStages((prev) =>
+                          prev.map((s) =>
+                            s.stage_id === paramEditStageId
+                              ? {
+                                  ...s,
+                                  token_rules: { ...s.token_rules, on_complete: v },
+                                }
+                              : s
+                          )
+                        );
+                      }}
+                      disabled={isViewer}
+                      style={{ marginLeft: 8, width: "100%" }}
+                    />
+                  </label>
+                </>
+              )}
+              {!isViewer && (
+                <button type="submit" disabled={paramSaving || !paramStage}>
+                  {paramSaving ? "Saving…" : "Save parameters for this stage"}
+                </button>
+              )}
+            </form>
+          ) : null}
+        </DataBlock>
+
         <DataBlock title="Quick Takeaways">
           {suggestions.length === 0 ? (
             <p>Nothing stands out yet, but there may just not be enough data to call it confidently.</p>
@@ -673,7 +1096,7 @@ useEffect(() => {
           
         </DataBlock>
 
-        <DataBlock title="Decision Notes">
+        <DataBlock title="Decision notes">
           {!isViewer && (
           <form onSubmit={addDecision} style={{ display: "grid", gap: 8 }}>
             <label>
@@ -691,32 +1114,32 @@ useEffect(() => {
               </select>
             </label>
             <label>
-              What changed?
+              What we changed
               <input
                 type="text"
                 value={decisionChange}
                 onChange={(e) => setDecisionChange(e.target.value)}
-                placeholder="Example: Lowered peek cost from 3 → 2"
+                placeholder="e.g. Peek cost 3 → 2"
                 style={{ marginLeft: 8, width: "100%" }}
               />
             </label>
             <label>
-              Why?
+              Why
               <input
                 type="text"
                 value={decisionRationale}
                 onChange={(e) => setDecisionRationale(e.target.value)}
-                placeholder="Example: Stage 1 helper usage was too low"
+                placeholder="Short reason in your own words"
                 style={{ marginLeft: 8, width: "100%" }}
               />
             </label>
             <label>
-              What pointed you to it?
+              Optional: link or where you saw it
               <input
                 type="text"
                 value={decisionEvidence}
                 onChange={(e) => setDecisionEvidence(e.target.value)}
-                placeholder="Example: Funnel drop-off and failure-rate chart"
+                placeholder="e.g. funnel export, playtest 12 Mar"
                 style={{ marginLeft: 8, width: "100%" }}
               />
             </label>
@@ -726,7 +1149,7 @@ useEffect(() => {
 
           {decisionLog.length === 0 ? (
             <p style={{ marginTop: 12, fontSize: 13, opacity: 0.75 }}>
-              No notes saved yet.
+              No notes yet.
             </p>
           ) : (
             <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
@@ -739,8 +1162,10 @@ useEffect(() => {
                   <div style={{ marginTop: 6 }}>
                     <strong>Stage {entry.stageId}:</strong> {entry.change}
                   </div>
-                  <div style={{ marginTop: 4 }}>Reason: {entry.rationale}</div>
-                  <div style={{ marginTop: 4, opacity: 0.8 }}>Evidence: {entry.evidence}</div>
+                  <div style={{ marginTop: 4 }}>{entry.rationale}</div>
+                  {entry.evidence ? (
+                    <div style={{ marginTop: 4, opacity: 0.8 }}>{entry.evidence}</div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -790,6 +1215,7 @@ useEffect(() => {
         </DataBlock>
       </section>
     </main>
+    </div>
   );
 }
 

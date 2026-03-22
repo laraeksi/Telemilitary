@@ -1,6 +1,6 @@
 // Main game loop and UI logic for a play session.
 // Handles timers, state updates, and telemetry events.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { endSession, startSession, trackEvent } from "../telemetry/events";
 
@@ -35,6 +35,12 @@ import confetti from "canvas-confetti";
 const STYLE_THEME_KEY = "style_theme_v1";
 const STYLE_UNLOCKS_KEY = "style_unlocked_v1";
 const PLAYER_TOKEN_KEY = "player_tokens_v1";
+/** First visit has no localStorage key — use this balance (see readNumber: Number(null) was wrongly 0). */
+const INITIAL_TOKENS_IF_UNSET = 5;
+
+function initialTokenFallback() {
+  return INITIAL_TOKENS_IF_UNSET;
+}
 
 const STYLE_THEMES = [
   { id: "classic", name: "Classic", desc: "Default look.", cost: 0 },
@@ -46,25 +52,25 @@ const STYLE_THEMES = [
 
 const FINAL_VICTORY_COPY = {
   easy: {
-    badge: "Easy Campaign Complete",
-    title: "Well Done, Recruit",
-    subtitle: "You finished the full training route and kept your momentum all the way through.",
-    summary: "A clean first campaign clear. You stayed sharp, stayed calm, and brought the mission home.",
-    voice: "Well done, recruit. Easy campaign complete. You cleared all ten stages.",
+    badge: "Easy mode — all stages",
+    title: "You made it",
+    subtitle: "Ten stages on easy, start to finish. That takes patience.",
+    summary: "Nothing flashy, just steady matches and you got there. Nice work.",
+    voice: "Nice. You cleared the whole easy run, all ten stages.",
   },
   balanced: {
-    badge: "Balanced Campaign Complete",
-    title: "Mission Complete",
-    subtitle: "You cleared all ten stages with focus, consistency, and steady control.",
-    summary: "That was the full standard run. Strong memory, strong pacing, and a solid finish.",
-    voice: "Mission complete. Balanced campaign cleared. Outstanding work.",
+    badge: "Standard mode — all stages",
+    title: "All done",
+    subtitle: "You ran the full game on the usual settings and didn’t tap out.",
+    summary: "That’s the whole campaign. Thanks for sticking with it.",
+    voice: "That’s everything on standard difficulty. Well played.",
   },
   hard: {
-    badge: "Hard Campaign Complete",
-    title: "Elite Victory",
-    subtitle: "You conquered the toughest route and held your nerve right to the end.",
-    summary: "That was a serious clear. Hard mode all the way through, with no easy wins handed to you.",
-    voice: "Elite victory. Hard campaign complete. That was seriously impressive.",
+    badge: "Hard mode — all stages",
+    title: "Seriously?",
+    subtitle: "You actually finished hard mode. The whole thing.",
+    summary: "Most people won’t see this screen. You earned the bragging rights.",
+    voice: "Hard mode, all stages. That’s… yeah, that’s really something.",
   },
 };
 
@@ -80,8 +86,11 @@ function readJson(key, fallback) {
 
 function readNumber(key, fallback) {
   try {
-    const raw = Number(localStorage.getItem(key));
-    return Number.isFinite(raw) ? raw : fallback;
+    const raw = localStorage.getItem(key);
+    // Missing key must use fallback — Number(null) is 0, which wrongly looked like a stored balance.
+    if (raw === null || raw === "") return fallback;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : fallback;
   } catch {
     return fallback;
   }
@@ -122,7 +131,7 @@ function Game() {
   // counters
   const [timeRemaining, setTimeRemaining] = useState(stage.timeLimit);
   const [movesRemaining, setMovesRemaining] = useState(stage.moveLimit);
-  const [tokens, setTokens] = useState(() => readNumber(PLAYER_TOKEN_KEY, stage.startTokens));
+  const [tokens, setTokens] = useState(() => readNumber(PLAYER_TOKEN_KEY, initialTokenFallback()));
   const [tokensEarned, setTokensEarned] = useState(0);
   const [tokensSpent, setTokensSpent] = useState(0);
   const [styleOpen, setStyleOpen] = useState(false);
@@ -152,6 +161,22 @@ function Game() {
   const [peekActive, setPeekActive] = useState(false);
   const [hintUids, setHintUids] = useState([]); // ✅ NEW
   const [freezeUntil, setFreezeUntil] = useState(0);
+  const freezeUntilRef = useRef(0);
+  useEffect(() => {
+    freezeUntilRef.current = freezeUntil;
+  }, [freezeUntil]);
+
+  // Clear freeze at end of duration so UI + loss logic stay in sync (timestamp alone does not re-render).
+  useEffect(() => {
+    if (freezeUntil <= 0) return;
+    const ms = freezeUntil - Date.now();
+    if (ms <= 0) {
+      setFreezeUntil(0);
+      return;
+    }
+    const id = setTimeout(() => setFreezeUntil(0), ms);
+    return () => clearTimeout(id);
+  }, [freezeUntil]);
 
   // undo snapshot
   const [lastSnapshot, setLastSnapshot] = useState(null);
@@ -172,7 +197,7 @@ function Game() {
 
   useEffect(() => {
     startSession(configId);
-    setTokens(readNumber(PLAYER_TOKEN_KEY, stages[0]?.startTokens ?? stage.startTokens));
+    setTokens(readNumber(PLAYER_TOKEN_KEY, initialTokenFallback()));
   }, [configId]);
 
   useEffect(() => {
@@ -276,6 +301,8 @@ function Game() {
   useEffect(() => {
     if (status !== "playing") return;
     if (timeRemaining > 0) return;
+    // Timer ticks are paused during Freeze, but loss must not fire until Freeze ends either.
+    if (freezeUntil > 0 && Date.now() < freezeUntil) return;
     playStageFail();
     setStatus("lost");
     setFailReason("time");
@@ -299,7 +326,7 @@ function Game() {
 
     setLockInput(true);
     setTimerRunning(false);
-  }, [timeRemaining, status]);
+  }, [timeRemaining, status, freezeUntil]);
 
   // fail when moves hits 0
   useEffect(() => {
@@ -386,6 +413,16 @@ function Game() {
 
       if (isMatch) {
         playMatch();
+        const gain = stage.rewardMatch ?? 0;
+        if (gain > 0) {
+          setTokens((t) => t + gain);
+          setTokensEarned((e) => e + gain);
+          trackEvent("resource_gain", {
+            stageId: stage.stageId,
+            amount: gain,
+            reason: "match",
+          });
+        }
         setMatchedUids((prev) => {
           const next = new Set(prev);
           next.add(aUid);
@@ -394,9 +431,12 @@ function Game() {
         });
       } else {
         playMismatch();
-        setTimeRemaining((tRem) =>
-          Math.max(0, tRem - stage.penaltyMismatchTime)
-        );
+        // Mismatch time penalty must respect Freeze: the clock is paused, so don't subtract seconds while frozen.
+        if (Date.now() >= freezeUntilRef.current) {
+          setTimeRemaining((tRem) =>
+            Math.max(0, tRem - stage.penaltyMismatchTime)
+          );
+        }
 
         // Dynamic hint: lots of mismatches and not using Hint
         if (mismatchCount + 1 >= 4 && hintsUsedThisStage === 0 && !tipMessage) {
@@ -411,11 +451,15 @@ function Game() {
       trackEvent(isMatch ? "match_success" : "match_fail", {
         stageId: stage.stageId,
         cards: [a.id, b.id],
-        penalty_seconds: isMatch ? 0 : stage.penaltyMismatchTime,
+        penalty_seconds: isMatch
+          ? 0
+          : Date.now() >= freezeUntilRef.current
+            ? stage.penaltyMismatchTime
+            : 0,
         moves_used: stage.moveLimit - nextMovesRemaining,
         moves_remaining: nextMovesRemaining,
         time_remaining: timeRemaining,
-        tokens_after: tokens,
+        tokens_after: isMatch ? tokens + (stage.rewardMatch ?? 0) : tokens,
       });
 
       trackEvent("move_used", {
@@ -883,17 +927,19 @@ function Game() {
         </Modal>
       )}
 
-      <Board
-        deck={deck}
-        rows={stage.rows}
-        cols={stage.cols}
-        flippedUids={[...flippedUids, ...hintUids]}
-        matchedUids={matchedUids}
-        mismatchUids={mismatchUids}
-        replayUids={replayUids}
-        onFlip={handleFlip}
-        peekActive={peekActive}
-      />
+      <div className="game-board-wrap">
+        <Board
+          deck={deck}
+          rows={stage.rows}
+          cols={stage.cols}
+          flippedUids={[...flippedUids, ...hintUids]}
+          matchedUids={matchedUids}
+          mismatchUids={mismatchUids}
+          replayUids={replayUids}
+          onFlip={handleFlip}
+          peekActive={peekActive}
+        />
+      </div>
 
       {pendingReward && (
         <section className="reward-toast" role="status" aria-live="polite">
@@ -940,12 +986,27 @@ function Game() {
       />
 
       {status === "won" && !isFinalStage && (
-        <Modal title="You Won!">
+        <Modal title="Nice one">
           <p>
-            Stage {stage.stageId} complete — you earned <b>+{stage.stageWinTokens}</b> tokens.
+            Stage {stage.stageId} is in the bag. You got <b>+{tokensEarned}</b> tokens
+            {tokensEarned > stage.stageWinTokens ? (
+              <>
+                {" "}
+                ({stage.stageWinTokens} from this stage, and {tokensEarned - stage.stageWinTokens} extra because you
+                cleared five in a row without a retry).
+              </>
+            ) : (
+              "."
+            )}
           </p>
+          {tokensEarned > stage.stageWinTokens && (
+            <p style={{ marginTop: 8, fontSize: 14, color: "#4b5563" }}>
+              You’ve got a <b>free Hint</b> lined up for next stage.
+            </p>
+          )}
           <p>
-            Tokens: <b>{tokens}</b> • Time left: <b>{timeRemaining}</b> • Moves left: <b>{movesRemaining}</b>
+            You’ve got <b>{tokens}</b> tokens, <b>{timeRemaining}</b> seconds left, and <b>{movesRemaining}</b> moves
+            to spare.
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
@@ -959,7 +1020,6 @@ function Game() {
         <Modal title={finalVictoryCopy.title} className={`final-victory-modal final-victory-modal--${configId}`}>
           <div className="final-victory">
             <div className="final-victory__badge">{finalVictoryCopy.badge}</div>
-            <div className="final-victory__seal" aria-hidden="true">★</div>
             <p className="final-victory__subtitle">{finalVictoryCopy.subtitle}</p>
             <p className="final-victory__summary">{finalVictoryCopy.summary}</p>
 

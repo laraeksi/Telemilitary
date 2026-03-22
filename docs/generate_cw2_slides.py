@@ -143,6 +143,18 @@ def main() -> None:
 
     add_bullets_slide(
         prs,
+        "Recap (What You'll See)",
+        [
+            "Game concept and telemetry-driven balancing problem",
+            "How we capture, validate, and store telemetry events",
+            "Dashboard views: funnels, spikes, progression, and fairness indicators",
+            "Balancing toolkit: rule suggestions, simulation previews, and decision logging",
+            "Testing, handover pack, and evaluation highlights",
+        ],
+    )
+
+    add_bullets_slide(
+        prs,
         "1. What We Delivered in Sprint 2",
         [
             "Playable browser memory game with 10 stages across easy/balanced/hard configs",

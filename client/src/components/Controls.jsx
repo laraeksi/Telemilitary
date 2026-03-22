@@ -17,7 +17,7 @@ function Controls({ onPeek, onFreeze, onUndo, onRetry, onQuit, costs, tokens }) 
         title="Hint shortcut: H"
       >
         <span className="controls__label">Hint</span>
-        <span className="controls__meta">H • -{costs.peek}</span>
+        <span className="controls__meta">H, −{costs.peek}</span>
       </button>
       <button
         type="button"
@@ -27,7 +27,7 @@ function Controls({ onPeek, onFreeze, onUndo, onRetry, onQuit, costs, tokens }) 
         title="Freeze shortcut: F"
       >
         <span className="controls__label">Freeze</span>
-        <span className="controls__meta">F • -{costs.freeze}</span>
+        <span className="controls__meta">F, −{costs.freeze}</span>
       </button>
       <button
         type="button"
@@ -37,7 +37,7 @@ function Controls({ onPeek, onFreeze, onUndo, onRetry, onQuit, costs, tokens }) 
         title="Undo shortcut: U"
       >
         <span className="controls__label">Undo</span>
-        <span className="controls__meta">U • -{costs.undo}</span>
+        <span className="controls__meta">U, −{costs.undo}</span>
       </button>
       <button type="button" onClick={withClick(onRetry)}>Retry</button>
       <button type="button" onClick={withClick(onQuit)}>Quit</button>

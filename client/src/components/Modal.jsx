@@ -1,6 +1,6 @@
 // Simple modal wrapper with inline styles.
-// Used for win/lose and consent dialogs.
-function Modal({ title, children, className = "" }) {
+// Used for win/lose, consent, maintainer ops.
+function Modal({ title, children, className = "", zIndex = 50 }) {
   return (
     <div
       role="dialog"
@@ -14,7 +14,7 @@ function Modal({ title, children, className = "" }) {
         alignItems: "center",
         justifyContent: "center",
         padding: 16,
-        zIndex: 50,
+        zIndex,
       }}
     >
       {/* Modal content container */}

@@ -54,6 +54,9 @@ In development, the client proxies `/api` requests to the backend.
 From the main menu, choose **Designer** to open the login and registration flow
 and access the dashboard.
 
+## Maintainer / operations (spec §2.3)
+Maintainers are **not** a third product login. The home menu includes **Maintainer / ops**, which opens a short panel: live check of `GET /api/health` plus pointers to `docs/deployment_guide.md` and `docs/maintainer-handover.md` (deployments, telemetry pipeline, tests).
+
 ## Gameplay Notes
 - Each difficulty contains 10 stages with its own pacing, pressure curve, and ending celebration.
 - Cosmetic styles are purchased using the same token balance earned during gameplay.
@@ -68,6 +71,22 @@ From `backend/`:
 - Dev API base is proxied; production builds can set:
   - PowerShell: `$env:VITE_API_BASE_URL="https://api.example.com"; npm run build`
   - Bash: `VITE_API_BASE_URL=https://api.example.com npm run build`
+
+## CW2 submission documentation (spec traceability)
+
+| Document | Purpose |
+|----------|---------|
+| [`docs/cw2-spec-coverage.md`](docs/cw2-spec-coverage.md) | Checklist: dataset minimums, balancing editor (≥8 params), roles, tests, report PDFs |
+| [`docs/dataset-vs-spec.md`](docs/dataset-vs-spec.md) | Seeded DB vs §4.1 minimums; how to verify / reset `game.db` |
+| [`docs/test-plan.md`](docs/test-plan.md) | Automated + manual E2E scenarios |
+| [`docs/maintainer-handover.md`](docs/maintainer-handover.md) | **Maintainer** as ops role (not a third login) |
+| [`docs/evaluation-cw2.md`](docs/evaluation-cw2.md) | Final evaluation — export to PDF if required |
+| [`docs/ethics-and-legal-cw2.md`](docs/ethics-and-legal-cw2.md) | Ethics / legal / privacy — export to PDF if required |
+| [`docs/accessibility.md`](docs/accessibility.md) | Accessibility notes and improvement backlog |
+| [`docs/software-inventory.md`](docs/software-inventory.md) | Dependencies / data inventory — expand for PDF appendix |
+| [`docs/deployment_guide.md`](docs/deployment_guide.md) | Local and production runbook |
+
+**PDFs:** Markdown sources live in `docs/`; print or export to PDF locally for separate coursework uploads.
 
 ## Notes
 - This project was developed as a coursework prototype; see `docs/` for diagrams and supporting material.
