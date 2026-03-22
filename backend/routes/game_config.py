@@ -103,7 +103,7 @@ def update_stage_config(config_id: str, stage_id: int):
         helper_map = {
             "peek_cost": "peek",
             "freeze_cost": "freeze",
-            "shuffle_cost": "shuffle",
+            "shuffle_cost": "undo",
         }
         for key, helper_key in helper_map.items():
             if key in helpers and helpers[key] is not None:
@@ -211,7 +211,7 @@ def bulk_update_stages(config_id: str):
             helper_map = {
                 "peek_cost": "peek",
                 "freeze_cost": "freeze",
-                "shuffle_cost": "shuffle",
+                "shuffle_cost": "undo",
             }
             for key, helper_key in helper_map.items():
                 if key in helpers and helpers[key] is not None:

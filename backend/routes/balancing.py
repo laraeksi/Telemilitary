@@ -14,6 +14,25 @@ from utils.auth import require_dashboard
 from utils.configs import get_config
 from utils.errors import error_response
 
+
+def _helper_costs_for_editor(stage: dict) -> dict:
+    """Peek / freeze / undo costs for the dashboard. DB uses helper_key 'undo'; API field name remains shuffle_cost."""
+    h = stage.get("helpers") or {}
+
+    def cost(*keys: str) -> int:
+        for k in keys:
+            entry = h.get(k)
+            if isinstance(entry, dict) and entry.get("cost") is not None:
+                return int(entry["cost"])
+        return 0
+
+    return {
+        "peek_cost": cost("peek"),
+        "freeze_cost": cost("freeze"),
+        "shuffle_cost": cost("shuffle", "undo"),
+    }
+
+
 # Blueprint for balancing and tuning endpoints (designer-only)
 bp = Blueprint("balancing", __name__)
 
@@ -92,14 +111,11 @@ def balancing_parameters():
         "stages": [
             {
                 "stage_id": stage["stage_id"],
+                "card_count": stage.get("card_count"),
                 "timer_seconds": stage["timer_seconds"],
                 "move_limit": stage["move_limit"],
                 "mismatch_penalty_seconds": stage["mismatch_penalty_seconds"],
-                "helpers": {
-                    "peek_cost": stage["helpers"]["peek"]["cost"],
-                    "freeze_cost": stage["helpers"]["freeze"]["cost"],
-                    "shuffle_cost": stage["helpers"]["shuffle"]["cost"],
-                },
+                "helpers": _helper_costs_for_editor(stage),
                 "token_rules": token_by_stage.get(
                     stage["stage_id"],
                     {"per_match": 1, "on_complete": 2},

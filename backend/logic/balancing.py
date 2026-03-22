@@ -127,9 +127,95 @@ def _sum_cost_deltas(change: Dict[str, Any]) -> int:
     return total
 
 
-def _simulation_effect(timer_delta: int, move_delta: int) -> float:
-    # Keep small deltas visible without overpowering the base replay model.
-    return (timer_delta * 0.001) + (move_delta * 0.0025)
+def _micro_nudge_completion(timer_delta: int, move_delta: int) -> float:
+    # Tiny extra bump so small easing changes still move the needle (positive deltas only).
+    n = 0.0
+    if timer_delta > 0:
+        n += timer_delta * 0.001
+    if move_delta > 0:
+        n += move_delta * 0.0025
+    return n
+
+
+def _survival_fraction(base: int, delta: int) -> float:
+    """
+    Fraction of clears that still succeed after applying delta to a limit (timer or moves).
+    delta >= 0: no extra losses from this axis. delta < 0: scale by (base + delta) / base, or 0 if exhausted.
+    """
+    if delta >= 0:
+        return 1.0
+    b = int(base)
+    if b <= 0:
+        return 0.0
+    effective = b + int(delta)
+    if effective <= 0:
+        return 0.0
+    return min(1.0, effective / float(b))
+
+
+def _fetch_stage_limits(conn, config_id: str, stage_id: int):
+    row = conn.execute(
+        """
+        SELECT timer_seconds, move_limit
+        FROM stages
+        WHERE config_id = ? AND stage_id = ?
+        """,
+        (config_id, stage_id),
+    ).fetchone()
+    if not row:
+        return 60, 20
+    return int(row["timer_seconds"] or 60), int(row["move_limit"] or 20)
+
+
+def _pressure_ease_from_limit_deltas(
+    timer_delta: int, move_delta: int, base_timer: int, base_moves: int
+) -> tuple[float, float]:
+    """Normalized [0,1] pressure (tighter limits) and ease (more forgiving) for quit heuristic."""
+    bt = max(1, int(base_timer))
+    bm = max(1, int(base_moves))
+    pressure = 0.0
+    if timer_delta < 0:
+        pressure += min(1.0, abs(timer_delta) / float(bt))
+    if move_delta < 0:
+        pressure += min(1.0, abs(move_delta) / float(bm))
+    pressure = min(1.0, pressure / 2.0)
+
+    ease = 0.0
+    if timer_delta > 0:
+        ease += min(1.0, timer_delta / float(bt))
+    if move_delta > 0:
+        ease += min(1.0, move_delta / float(bm))
+    ease = min(1.0, ease / 2.0)
+    return pressure, ease
+
+
+def _adjust_quit_rate_from_limit_deltas(
+    completion_rate: float,
+    failure_rate: float,
+    quit_rate: float,
+    timer_delta: int,
+    move_delta: int,
+    base_timer: int,
+    base_moves: int,
+) -> tuple[float, float, float, float, float]:
+    """
+    Shift quit rate when limits change; rebalance completion vs failure among non-quit outcomes.
+    Returns (c_new, f_new, q_new, pressure, ease).
+    """
+    pressure, ease = _pressure_ease_from_limit_deltas(
+        timer_delta, move_delta, base_timer, base_moves
+    )
+    k = 0.28
+    q_new = _clamp(quit_rate + k * (pressure - ease), 0.0, 1.0)
+    nonq = completion_rate + failure_rate
+    rem = max(0.0, 1.0 - q_new)
+    if nonq <= 1e-12:
+        c_new = rem
+        f_new = 0.0
+    else:
+        c_new = rem * (completion_rate / nonq)
+        f_new = rem * (failure_rate / nonq)
+    return c_new, f_new, q_new, pressure, ease
 
 
 # Simulate a balance change without mutating data.
@@ -152,6 +238,7 @@ def simulate_balance_change(payload):
                 """,
                 (config_id, stage_id),
             ).fetchall()
+            base_timer, base_moves = _fetch_stage_limits(conn, config_id, stage_id)
 
         starts = 0
         completes = 0
@@ -227,32 +314,68 @@ def simulate_balance_change(payload):
         adjusted_fails = max(0, fails - converted)
         adjusted_completes = completes + converted
 
+        # Negative timer/move: fewer clears survive (scale by effective budget vs base stage limits).
+        if timer_delta < 0 or move_delta < 0:
+            surv_t = _survival_fraction(base_timer, timer_delta)
+            surv_m = _survival_fraction(base_moves, move_delta)
+            surv = surv_t * surv_m
+            new_completes = int(max(0, min(adjusted_completes, round(adjusted_completes * surv))))
+            lost_clears = adjusted_completes - new_completes
+            adjusted_completes = new_completes
+            adjusted_fails += lost_clears
+            notes_extra = (
+                f"Tighter limits vs this stage's current timer ({base_timer}s) and move cap ({base_moves}): "
+                f"about {surv * 100:.0f}% of prior clears would still fit ({lost_clears} clears → fails)."
+            )
+        else:
+            notes_extra = None
+
+        c_rate = adjusted_completes / starts
+        f_rate = adjusted_fails / starts
+        q_rate = quits / starts
+
+        if timer_delta != 0 or move_delta != 0:
+            c_rate, f_rate, q_rate, p, e = _adjust_quit_rate_from_limit_deltas(
+                c_rate, f_rate, q_rate, timer_delta, move_delta, base_timer, base_moves
+            )
+            notes_quit = (
+                f"Quit rate adjusted for limit pressure (tighter vs easier): "
+                f"pressure {p:.2f}, ease {e:.2f} → estimated quit share {q_rate:.1%}."
+            )
+        else:
+            notes_quit = None
+
         after = {
-            "completion_rate": adjusted_completes / starts,
-            "failure_rate": adjusted_fails / starts,
-            "quit_rate": quits / starts,
+            "completion_rate": c_rate,
+            "failure_rate": f_rate,
+            "quit_rate": q_rate,
         }
 
         notes = [
             f"This change would likely turn {converted} of {fails} earlier failed runs into clears "
             f"(time-based: {converted_from_time}, move-based: {converted_from_moves})."
         ]
+        if notes_extra:
+            notes.append(notes_extra)
+        if notes_quit:
+            notes.append(notes_quit)
 
-        if timer_delta != 0 or move_delta != 0:
+        if timer_delta > 0 or move_delta > 0:
             quit_rate = after["quit_rate"]
             max_non_quit = max(0.0, 1.0 - quit_rate)
             completion_rate = _clamp(
-                after["completion_rate"] + _simulation_effect(timer_delta, move_delta), 0.0, max_non_quit
+                after["completion_rate"] + _micro_nudge_completion(timer_delta, move_delta),
+                0.0,
+                max_non_quit,
             )
             failure_rate = max(0.0, max_non_quit - completion_rate)
-            
             after = {
                 "completion_rate": completion_rate,
                 "failure_rate": failure_rate,
                 "quit_rate": quit_rate,
             }
             notes.append(
-                "A small extra adjustment was added so lighter changes still show up in the estimate."
+                "A small extra adjustment was added so lighter easing changes still show up in the estimate."
             )
 
         results.append(

@@ -76,3 +76,62 @@ def test_simulation_route_returns_result_for_requested_stage(tmp_path, monkeypat
     assert body["results"][0]["after"]["completion_rate"] > body["results"][0]["before"]["completion_rate"]
     assert len(body["results"][0]["notes"]) >= 1
 
+
+def test_simulation_negative_timer_beyond_stage_budget_zeroes_completion(tmp_path, monkeypatch):
+    """Cutting timer below zero (relative to seeded stage timer) should drive completion to ~0, not a small %."""
+    db_path = tmp_path / "test_balancing_neg.db"
+    monkeypatch.setattr(Config, "DB_PATH", str(db_path))
+    monkeypatch.setattr("data.seed_telemetry.seed_telemetry_if_empty", lambda conn: None)
+
+    app = create_app()
+    client = app.test_client()
+
+    for idx in range(10):
+        _post_event(
+            client,
+            {
+                "event_id": f"neg_start_{idx}",
+                "timestamp": f"2026-03-01T12:0{idx}:00Z",
+                "event_type": "stage_start",
+                "user_id": f"u{idx}",
+                "session_id": f"s{idx}",
+                "stage_id": 2,
+                "config_id": "balanced",
+                "payload": {},
+            },
+        )
+        _post_event(
+            client,
+            {
+                "event_id": f"neg_ok_{idx}",
+                "timestamp": f"2026-03-01T12:1{idx}:00Z",
+                "event_type": "stage_complete",
+                "user_id": f"u{idx}",
+                "session_id": f"s{idx}",
+                "stage_id": 2,
+                "config_id": "balanced",
+                "payload": {},
+            },
+        )
+
+    # balanced stage 2: timer_seconds = 70 - 2*2 = 66 in default seed
+    response = client.post(
+        "/api/balancing/simulate",
+        json={
+            "config_id": "balanced",
+            "changes": [
+                {
+                    "stage_id": 2,
+                    "timer_seconds_delta": -90,
+                    "move_limit_delta": 0,
+                }
+            ],
+        },
+        headers={"X-Role": "designer"},
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["results"][0]["before"]["completion_rate"] == 1.0
+    assert body["results"][0]["after"]["completion_rate"] == 0.0
+

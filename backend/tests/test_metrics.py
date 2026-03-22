@@ -75,6 +75,8 @@ def test_build_stage_metrics_completion_and_tokens():
     # timing and aggregates
     assert len(s1["time_spent"]) == 1
     assert s1["time_spent"][0] == 300.0  # 5 minutes between start and complete
+    assert len(s1["time_spent_on_complete"]) == 1
+    assert s1["time_spent_on_complete"][0] == 300.0
     assert s1["moves_used"] == [10.0]
     assert s1["tokens_earned"] == [5.0]
     assert s1["tokens_spent"] == [2.0]
@@ -86,6 +88,7 @@ def test_build_stage_metrics_completion_and_tokens():
     record = records[0]
     assert record["session_id"] == "s1"
     assert record["time_spent"] == 300.0
+    assert record["tokens_earned"] == 5.0
     assert record["tokens_spent"] == 2.0
     assert record["completed"] is True
     assert record["failed"] is False
@@ -144,6 +147,7 @@ def test_build_stage_metrics_failure_and_move_fail():
     # time spent from start to fail
     assert len(s2["time_spent"]) == 1
     assert s2["time_spent"][0] == 120.0  # 2 minutes
+    assert s2["time_spent_on_complete"] == []
 
     # fail-specific metrics
     assert s2["time_remaining_on_fail"] == [-5.0]
@@ -157,6 +161,8 @@ def test_build_stage_metrics_failure_and_move_fail():
     record = records[0]
     assert record["session_id"] == "s2"
     assert record["time_spent"] == 120.0
+    assert record["tokens_earned"] == 0.0
+    assert record["tokens_spent"] == 0.0
     assert record["failed"] is True
     assert record["fail_reason"] == "moves"
 

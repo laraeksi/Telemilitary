@@ -93,19 +93,3 @@ def get_config_ids() -> list[str]:
     with get_connection() as conn:
         rows = conn.execute("SELECT config_id FROM configs ORDER BY config_id").fetchall()
     return [row["config_id"] for row in rows]
-
-
-
-def get_config(config_id: str) -> dict | None:
-    # Returns a single config by ID (or None if not found)
-    for config in fetch_configs():
-        if config["config_id"] == config_id:
-            return config
-    return None
-
-
-def get_config_ids() -> list[str]:
-    # Returns a list of all available config IDs
-    with get_connection() as conn:
-        rows = conn.execute("SELECT config_id FROM configs ORDER BY config_id").fetchall()
-    return [row["config_id"] for row in rows]

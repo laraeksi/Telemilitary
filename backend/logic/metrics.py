@@ -115,6 +115,7 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
                 "powerup_used": 0,
                 "move_fail_count": 0,
                 "time_spent": [],
+                "time_spent_on_complete": [],
                 "time_remaining_on_fail": [],
                 "moves_used": [],
                 "tokens_earned": [],
@@ -199,6 +200,8 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
                     time_spent = (end_time - last_start).total_seconds()
                     stats[stage_id]["time_spent"].append(time_spent)
                     session_time_spent = time_spent
+                    if event["event_type"] == EventType.STAGE_COMPLETE.value:
+                        stats[stage_id]["time_spent_on_complete"].append(time_spent)
 
                 if event["event_type"] == EventType.STAGE_COMPLETE.value:
                     completed = True
@@ -215,6 +218,7 @@ def _build_stage_metrics(events: List[Dict[str, Any]]) -> Tuple[Dict[int, Dict[s
             {
                 "session_id": session_id,
                 "time_spent": session_time_spent,
+                "tokens_earned": tokens_earned,
                 "tokens_spent": tokens_spent,
                 "completed": completed,
                 "failed": failed,
@@ -269,7 +273,7 @@ def get_funnel_metrics(config_id: str, from_ts: Optional[str] = None, to_ts: Opt
 # Build detailed stage stats for a config.
 def get_stage_stats(config_id: str, from_ts: Optional[str] = None, to_ts: Optional[str] = None):
     events = _load_events(config_id, from_ts, to_ts)
-    stage_stats, _ = _build_stage_metrics(events)
+    stage_stats, records_by_stage = _build_stage_metrics(events)
     stage_ids = sorted(stage_stats.keys())
 
     stage_start_map = {stage_id: stage_stats[stage_id]["stage_starts"] for stage_id in stage_ids}
@@ -288,15 +292,26 @@ def get_stage_stats(config_id: str, from_ts: Optional[str] = None, to_ts: Option
         quit_rate = stage_quits / stage_starts if stage_starts else 0.0
         retry_rate = retries / stage_starts if stage_starts else 0.0
 
-        avg_time_spent = _mean(stats["time_spent"])
+        # Prefer time on successful clears only — fails/quits are often much shorter and flatten the curve.
+        avg_time_spent = _mean(
+            stats["time_spent_on_complete"] if stats["time_spent_on_complete"] else stats["time_spent"]
+        )
         median_time_remaining = _median(stats["time_remaining_on_fail"])
         avg_moves_used = _mean(stats["moves_used"])
 
         move_fail_ratio = (
             stats["move_fail_count"] / stage_fails if stage_fails else 0.0
         )
-        avg_tokens_earned = _mean(stats["tokens_earned"])
-        avg_tokens_spent = _mean(stats["tokens_spent"])
+        # Net tokens: averaging failed attempts drags both toward "small spend, no reward" (~−0.1 overall).
+        # For designer-facing stats, use successful clears only when we have any.
+        records = records_by_stage.get(stage_id) or []
+        completed_records = [r for r in records if r.get("completed")]
+        if completed_records:
+            avg_tokens_earned = _mean([float(r["tokens_earned"]) for r in completed_records])
+            avg_tokens_spent = _mean([float(r["tokens_spent"]) for r in completed_records])
+        else:
+            avg_tokens_earned = _mean(stats["tokens_earned"])
+            avg_tokens_spent = _mean(stats["tokens_spent"])
         token_pressure_index = (
             avg_tokens_spent / avg_tokens_earned
             if avg_tokens_earned and avg_tokens_earned > 0
