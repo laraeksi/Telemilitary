@@ -1,6 +1,6 @@
 <!-- How to run and deploy the project. -->
 <!-- Covers dev and production steps. -->
-# Deployment Guide (CW1)
+# Deployment Guide (CW2)
 
 ## Overview
 This guide covers local development and production deployment for the memory match game, telemetry API, and dashboard.

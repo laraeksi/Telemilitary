@@ -13,7 +13,7 @@ In this codebase, **Maintainer** is **not** implemented as a third login screen 
 | **Runtime** | Python backend + Node client versions per `deployment_guide.md`; environment variables (`VITE_API_BASE_URL` for production builds). |
 | **Database** | `backend/data/game.db` — backup before upgrades; understand that **telemetry seed** runs only when `events` is empty (see `docs/dataset-vs-spec.md`). |
 | **Quality** | Run `python -m pytest` from `backend/`; follow `docs/test-plan.md` for manual checks before demos. |
-| **Security** | Designer/dashboard auth as implemented in `backend/utils/auth.py` / `permissions.py`; do not commit secrets; use HTTPS in production. |
+| **Security** | Designer/dashboard auth as implemented in `backend/utils/auth.py`; role guards via `require_dashboard()` and `require_designer()`; do not commit secrets; use HTTPS in production. |
 
 ## Handover checklist for a new Maintainer
 
