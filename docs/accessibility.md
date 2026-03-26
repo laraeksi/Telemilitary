@@ -27,4 +27,3 @@
 
 ---
 
-*For submission, add a short “Accessibility” subsection in the main report referencing this file and any audit you performed.*

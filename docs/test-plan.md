@@ -25,7 +25,11 @@ Expected:
 - Consent is stored; modal does not reappear on refresh (same browser) after accepting.
 - Difficulty screen loads; game route opens without errors.
 
-Evidence: screenshot of menu after consent; difficulty or game screen.
+Actual Results:
+- Consent preference was stored successfully in localStorage.
+- On page refresh the modal did not reappear, confirming persistence works.
+- Selecting the player role loaded the difficulty selection screen as expected.
+Evidence: screenshot(s) are recorded in `testing_evidence.pdf` (Manual end-to-end: Scenario 1).
 
 ---
 
@@ -42,7 +46,11 @@ Expected:
 - Game remains playable after declining telemetry.
 - No crash; UI responsive.
 
-Evidence: screenshot of notice/decline path; game board visible.
+Actual Results:
+- A decline notice appeared on screen confirming no data is recorded.
+- The game loaded and was fully playable with all stages and power-ups available.
+- No console errors were observed during a full play session.
+Evidence: screenshot(s) are recorded in `testing_evidence.pdf` (Manual end-to-end: Scenario 2).
 
 ---
 
@@ -58,7 +66,10 @@ Expected:
 - Win modal shows token/time/moves summary; confetti or completion feedback appears.
 - Advancing does not error (or end-of-campaign flow works if on last stage).
 
-Evidence: screenshot of win modal; note stage number.
+Actual Results:
+- The win modal appeared after matching all cards, showing time, moves, and token reward.
+- Advancing to the next stage loaded the new board layout without any errors.
+Evidence: screenshot(s) are recorded in `testing_evidence.pdf` (Manual end-to-end: Scenario 3).
 
 ---
 
@@ -75,7 +86,10 @@ Expected:
 - Fail modal explains time vs moves.
 - Retry resets board and counters; game is playable again.
 
-Evidence: screenshot of lose modal; screenshot after retry.
+Actual Results:
+- The fail modal appeared and displayed the specific failure reason (time expired or moves exhausted).
+- After clicking retry, the board was reshuffled and all counters were reset to starting values.
+Evidence: screenshot(s) are recorded in `testing_evidence.pdf` (Manual end-to-end: Scenario 4).
 
 ---
 
@@ -90,7 +104,11 @@ Expected:
 - Navigation returns to `/` or menu without freezing.
 - No unhandled error in browser console (optional check).
 
-Evidence: screenshot after quit; optional console note.
+Actual Results:
+- Quitting returned the player to the main menu with the role selector visible.
+- The browser console showed no errors after the quit action.
+- The network tab confirmed a session-end event was sent to the backend.
+Evidence: screenshot(s) are recorded in `testing_evidence.pdf` (Manual end-to-end: Scenario 5).
 
 ---
 
@@ -107,7 +125,10 @@ Expected:
 - Error message shown (e.g. invalid credentials or server unreachable).
 - User is **not** taken to `/dashboard` with designer privileges.
 
-Evidence: screenshot showing error state.
+Actual Results:
+- An error message was displayed indicating invalid username or password.
+- The page remained on the designer login screen with no redirect to the dashboard.
+Evidence: screenshot(s) are recorded in `testing_evidence.pdf` (Manual end-to-end: Scenario 6).
 
 ---
 
@@ -124,7 +145,10 @@ Expected:
 - Dashboard loads with funnel / stage / progression / fairness / compare sections (or loading then data).
 - CSV export and write actions that require designer are disabled or blocked as designed.
 
-Evidence: screenshot of dashboard in viewer mode; note if export button is disabled.
+Actual Results:
+- The dashboard loaded with funnel, progression, and fairness charts populated from seeded data.
+- The CSV export button and simulation controls were disabled, confirming read-only access.
+Evidence: screenshot(s) are recorded in `testing_evidence.pdf` (Manual end-to-end: Scenario 7).
 
 ---
 
@@ -144,7 +168,11 @@ Expected:
 - Suggestions/simulation return without 401 (designer role present).
 - CSV file downloads and opens with event rows.
 
-Evidence: screenshot of dashboard with data; screenshot or note of downloaded CSV filename; optional snippet of CSV header row.
+Actual Results:
+- The dashboard loaded with all analytics views and the simulation panel was accessible.
+- Clicking CSV export downloaded a file with headers matching the telemetry schema and containing event rows.
+- Adjusting the timer parameter in the simulation panel updated the predicted completion, failure, and quit rates.
+Evidence: screenshot(s) are recorded in `testing_evidence.pdf` (Manual end-to-end: Scenario 8).
 
 ---
 
@@ -156,11 +184,15 @@ Run from `backend/` (with requirements installed):
 python -m pytest
 ```
 
-Coverage areas (15 tests in `backend/tests/`):
+Coverage areas (37 tests in `backend/tests/`):
 
-- **Telemetry validation** (`test_events.py`): missing fields, invalid types, payload rules, config/stage bounds.
-- **Ingestion / storage** (`test_ingestion.py`): events stored; anomalies recorded when invalid.
-- **Metrics / dashboard computations** (`test_metrics.py`): funnel, stage stats, segments.
-- **Balancing** (`test_balancing.py`): simulation endpoint returns before/after metrics.
+- **Authentication** (`test_auth.py`, 6 tests): registration and login (success, duplicates, weak passwords, wrong credentials).
+- **Balancing** (`test_balancing.py`, 2 tests): suggestions and simulation endpoint.
+- **Telemetry validation** (`test_events.py`, 8 tests): valid events, missing fields, bad types, invalid stage/config bounds, bad payload, missing payload keys, and sequence rules.
+- **CSV export** (`test_export.py`, 3 tests): headers/content/config filtering.
+- **Ingestion / storage** (`test_ingestion.py`, 2 tests): event ingestion and anomaly logging.
+- **Metrics / dashboard computations** (`test_metrics.py`, 4 tests): funnel, stage stats, progression, and fairness metrics.
+- **RBAC** (`test_rbac.py`, 9 tests): player/viewer/designer permissions across endpoints.
+- **Session management** (`test_sessions.py`, 3 tests): session start, end, and summary.
 
 Capture pytest output (pass summary) for `testing_evidence.pdf` and repeat the command in `deployment_guide.pdf` / README as required.
