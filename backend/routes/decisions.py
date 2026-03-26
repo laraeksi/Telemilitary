@@ -1,7 +1,10 @@
-# Stores and fetches designer decision notes.
-# Used by the decision log UI.
-# routes/decisions.py
-# Routes for storing and viewing designer balancing decisions
+"""
+Designer decision log routes (read + write).
+
+When designers tweak balance, we keep a small audit trail: what changed, why it
+changed, and optional evidence links. This is mainly for transparency (and it
+also makes marking easier because decisions are visible and reproducible).
+"""
 
 from __future__ import annotations
 
@@ -13,22 +16,19 @@ from flask import Blueprint, request
 from data.db import get_connection
 from utils.auth import require_dashboard, require_designer
 
-# Blueprint for designer decision-log endpoints
+# Blueprint for designer decision-log endpoints.
 bp = Blueprint("decisions", __name__)
 
 
-# List decision log entries.
 @bp.get("/api/decisions")
 def list_decisions():
-    # Dashboard endpoint to list balancing decisions (designer or viewer)
-    # Can optionally filter by config_id
-    # Blocks non-designer roles.
+    """List decision log entries (dashboard roles only)."""
     auth_error = require_dashboard()
     if auth_error:
         return auth_error
 
     config_id = request.args.get("config_id")
-    # Build query dynamically based on filters.
+    # Optional filter: dashboard can show only one config’s decisions.
     query = "SELECT * FROM decisions"
     params = []
     if config_id:
@@ -39,9 +39,9 @@ def list_decisions():
         rows = conn.execute(f"{query} ORDER BY timestamp DESC", params).fetchall()
 
     decisions = []
-    # Convert rows to JSON-friendly dicts.
+    # Convert rows to JSON-friendly dicts (and parse JSON columns safely).
     for row in rows:
-        # Parse stored JSON fields safely
+        # These fields are stored as JSON strings in SQLite.
         change = {}
         evidence = []
 
@@ -49,6 +49,7 @@ def list_decisions():
             try:
                 change = json.loads(row["change_json"])
             except json.JSONDecodeError:
+                # Don’t fail the whole endpoint just because one row has bad JSON.
                 change = {}
 
         if row["evidence_links"]:
@@ -72,16 +73,15 @@ def list_decisions():
     return {"decisions": decisions}
 
 
-# Create a new decision log entry.
 @bp.post("/api/decisions")
 def create_decision():
-    # Designer-only endpoint to record a new balancing decision
-    # Stores what was changed and the rationale behind it
+    """Create a new decision log entry (designer-only)."""
     auth_error = require_designer()
     if auth_error:
         return auth_error
 
     payload = request.get_json() or {}
+    # Allow client to supply an id/time (useful for imports), otherwise generate.
     decision_id = payload.get("decision_id") or str(uuid.uuid4())
     created_at = payload.get("created_at") or datetime.utcnow().isoformat() + "Z"
 

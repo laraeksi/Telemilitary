@@ -1,5 +1,14 @@
-# Validates telemetry event shapes and values.
-# Returns anomalies for invalid payloads.
+"""
+Telemetry validation logic.
+
+The backend accepts events from the client and runs a set of "cheap checks":
+- required envelope fields exist
+- enum-like fields use known values
+- payload includes required keys for that event type
+
+Instead of rejecting everything, we return a list of anomalies so the event can
+still be stored and inspected later.
+"""
 from datetime import UTC, datetime
 from typing import Any, Dict, List
 
@@ -18,12 +27,12 @@ REQUIRED_FIELDS = [
 ]
 
 
-# Validate a telemetry event and return anomalies.
 def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate one telemetry event and return `{is_valid, anomalies}`."""
     anomalies: List[Dict[str, Any]] = []
     event_id = event.get("event_id", "unknown")
 
-    # Helper to append a structured anomaly record.
+    # Helper to append a structured anomaly record (keeps shape consistent).
     def add_anomaly(anomaly_id: str, anomaly_type: str, detected_by: str, details: Dict[str, Any]):
         anomalies.append(
             {
@@ -37,7 +46,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             }
         )
 
-    # Check basic envelope fields first.
+    # Check basic envelope fields first (before we look deeper at payload rules).
     for field in REQUIRED_FIELDS:
         if event.get(field) is None:
             add_anomaly(
@@ -57,7 +66,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             {"event_type": event_type},
         )
 
-    # Stage id must be between 1 and 10.
+    # Stage id must be between 1 and 10 (game has 10 stages in this project).
     stage_id = event.get("stage_id")
     if stage_id is None or not isinstance(stage_id, (int, float)) or not (1 <= int(stage_id) <= 10):
         add_anomaly(
@@ -67,7 +76,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             {"stage_id": stage_id},
         )
 
-    # Config id must match the enum.
+    # Config id must match the enum (easy/balanced/hard).
     config_id = event.get("config_id")
     if config_id not in [c.value for c in ConfigId]:
         add_anomaly(
@@ -86,9 +95,10 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
             "payload_type_check",
             {"payload_type": type(payload).__name__},
         )
+        # If payload isn’t a dict, we can’t safely validate payload-required fields.
         return {"is_valid": len(anomalies) == 0, "anomalies": anomalies}
 
-    # Payload requirements by event type.
+    # Payload requirements by event type (this is the "schema" for each event).
     required_payload_fields = {
         EventType.SESSION_START.value: ["started_at"],
         EventType.SESSION_END.value: ["ended_at", "outcome"],
@@ -143,6 +153,7 @@ def validate_event(event: Dict[str, Any]) -> Dict[str, Any]:
                 )
 
     if event_type == EventType.STAGE_FAIL.value:
+        # Fail reason is treated like an enum too (helps analytics be consistent).
         fail_reason = payload.get("fail_reason")
         if fail_reason not in ("time", "moves"):
             add_anomaly(

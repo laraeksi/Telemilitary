@@ -1,5 +1,9 @@
-// Difficulty selection page for the player.
-// Saves the chosen difficulty before starting the game.
+/**
+ * Difficulty selection page.
+ *
+ * This page stores the selected difficulty in localStorage (so `Game.jsx` can
+ * read it on load) and then navigates into the game route.
+ */
 import { useNavigate } from "react-router-dom";
 import { trackEvent } from "../telemetry/events";
 
@@ -7,13 +11,13 @@ export default function DifficultySelect() {
     const navigate = useNavigate();
 
     function choose(configId) {
-        // backend validator expects config_id in enum: easy/balanced/hard
+        // Backend validator expects config_id in enum: easy/balanced/hard.
         localStorage.setItem("telemetry_config_id_v1", configId);
 
-        // start at stage 1 for telemetry defaults
+        // Start at stage 1 for telemetry defaults.
         localStorage.setItem("stage_Id", "1");
 
-        // Log difficulty selection to telemetry.
+        // Log difficulty selection as a settings change event (nice for analytics).
         trackEvent("settings_change", {
             stageId:1,
             setting_key: "difficulty",

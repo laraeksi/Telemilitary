@@ -1,5 +1,7 @@
-// Helper functions can live here later.
-// Intentionally left empty for now.
-// Add small utilities when telemetry grows.
-// This avoids unused imports today.
-// Empty placeholder module for now.
+/**
+ * Telemetry helper utilities (placeholder).
+ *
+ * This module is intentionally empty right now. It exists so we have a stable
+ * place to put small shared helpers later (e.g., payload normalisers or enums),
+ * without having to rewrite imports across the app.
+ */

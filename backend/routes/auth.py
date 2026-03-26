@@ -1,6 +1,15 @@
+"""
+Authentication-ish routes for the dashboard side of the project.
+
+Important context: this is not a full production auth system. We only need
+designer accounts for the dashboard tools, so we store designers in SQLite and
+use hashed passwords via Werkzeug.
+
+Players are treated as anonymous/pseudonymous (see sessions routes), which fits
+the assignment scope and keeps the game flow simple.
+"""
+
 from __future__ import annotations
-# Auth routes for registering and logging in designers.
-# Handles register/login/logout helpers.
 
 import uuid
 from datetime import datetime
@@ -24,8 +33,8 @@ PASSWORD_RULES = [
 ]
 
 
-# Shared password validation helper.
 def validate_password(password: str) -> str | None:
+    """Return a friendly error string if password fails rules, else None."""
     if len(password) < 8:
         return "Password must be at least 8 characters."
     if not re.search(r"[A-Z]", password):
@@ -37,20 +46,17 @@ def validate_password(password: str) -> str | None:
     return None
 
 
-# Simple health check endpoint.
 @bp.get("/api/health")
 def health():
-    # Simple health check to confirm the backend is running
-    # Useful for deployment checks.
+    """Health check used by deployment/tests to confirm backend is alive."""
     return {"ok": True}
 
 
-# Register a new designer account.
 @bp.post("/api/auth/register")
 def register():
-    # Creates a new user account (stored in SQLite)
+    """Create a new designer account (stored in SQLite)."""
     body = request.get_json() or {}
-    # Trim username to avoid extra spaces.
+    # Trimming helps avoid "same name but with spaces" confusion.
     username = (body.get("username") or "").strip()
     password = body.get("password") or ""
 
@@ -68,7 +74,7 @@ def register():
             },
         )
 
-    # Generate a short user id prefix.
+    # Short IDs are easier to read in logs/screenshots.
     user_id = f"u_{uuid.uuid4().hex[:8]}"
     created_at = datetime.utcnow().isoformat() + "Z"
     password_hash = generate_password_hash(password)
@@ -83,7 +89,7 @@ def register():
                 (user_id, username, password_hash, created_at),
             )
     except Exception as e:
-        # Most likely UNIQUE constraint failed on username
+        # Most likely UNIQUE constraint failed on username.
         return error_response("The chosen username already exists. Please use a different one.", code="CONFLICT", status=409)
 
     return {
@@ -92,10 +98,9 @@ def register():
     }, 201
 
 
-# Login a designer account.
 @bp.post("/api/auth/login")
 def login():
-    # Validates username/password and returns user_id + role
+    """Validate designer credentials and return identity info."""
     body = request.get_json() or {}
     username = (body.get("username") or "").strip()
     password = body.get("password") or ""
@@ -120,19 +125,20 @@ def login():
     }
 
 
-# No-op logout endpoint for frontend.
 @bp.post("/api/auth/logout")
 def logout():
-    # Frontend logout hook (no server-side session to clear)
+    """Logout hook (no server-side session state in this project)."""
     return {"ok": True}
 
 
-# Return current user identity (best-effort).
 @bp.get("/api/me")
 def me():
-    # Returns current user identity (best-effort):
-    # - If X-User-Id header is provided, look up role from DB
-    # - Otherwise fall back to header role logic (useful in dev)
+    """Return current user identity (best-effort).
+
+    We support two development-friendly ways:
+    - `X-User-Id` header: look up a real designer row (if it exists)
+    - otherwise: fall back to role headers for quick testing
+    """
     user_id = request.headers.get("X-User-Id")
 
     if user_id:
@@ -155,6 +161,6 @@ def me():
             }
                 
 
-    # Fallback for development/testing
+    # Fallback for development/testing when no user id is provided.
     role = get_role()
     return {"is_authenticated": True, "user": {"user_id": "u_104", "role": role}}

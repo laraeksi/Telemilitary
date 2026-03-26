@@ -1,10 +1,12 @@
-// Re-exports telemetry helpers in one place.
-// Makes imports shorter for callers.
-// src/telemetry/index.js
-// Public API for the telemetry module
+/**
+ * Telemetry module public API.
+ *
+ * This file is basically a "barrel" export: it re-exports the parts of telemetry
+ * that the rest of the app is allowed to use. It keeps imports clean and helps
+ * avoid circular dependencies as telemetry grows.
+ */
 
-// Re-export the public telemetry API.
-// This keeps imports consistent across the app.
+// Re-export the public telemetry API (stable import paths across the app).
 export { logEvent } from "./logger";
 export { TELEMETRY_EVENTS } from "./events";
 export {

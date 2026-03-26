@@ -1,5 +1,11 @@
-// Renders the grid of cards for the game.
-// Maps deck data into Card components.
+/**
+ * Game board grid renderer.
+ *
+ * This component is intentionally "dumb": it just maps the deck array into
+ * `Card` components and sets up the CSS grid sizing via CSS variables.
+ *
+ * The actual game rules (matching, timers, tokens) live in `pages/Game.jsx`.
+ */
 import Card from "./Card";
 
 function Board({
@@ -17,6 +23,7 @@ function Board({
       className="board"
       aria-label="Game board"
       style={{
+        // CSS variables let the stylesheet size the grid without inline math everywhere.
         "--board-cols": cols,
         "--board-rows": rows,
       }}

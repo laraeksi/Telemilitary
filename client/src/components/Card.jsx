@@ -1,5 +1,9 @@
-// Single memory-card button with flip behavior.
-// Also handles keyboard activation.
+/**
+ * One card button on the board.
+ *
+ * We render it as a real `<button>` so it’s naturally focusable/clickable and
+ * accessible. Keyboard support (Enter/Space) is added to feel the same as a click.
+ */
 function Card({ imgSrc, alt, flipped, matched, shaking, ghostFlipped, onFlip }) {
   const isFlipped = flipped || matched;
   const isGhost = !isFlipped && ghostFlipped;

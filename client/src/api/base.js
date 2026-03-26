@@ -1,7 +1,12 @@
-// Small helper to build API URLs in dev/prod.
-// Keeps API base empty in dev for proxying.
-// Base URL for API calls (empty means same origin).
-// In dev we rely on the Vite proxy, so force empty base.
+/**
+ * API URL builder.
+ *
+ * In development we rely on the Vite proxy, so we keep the base empty and use
+ * same-origin paths like `/api/metrics/...`.
+ *
+ * In production the API might be hosted somewhere else, so we allow an env var
+ * base URL and safely join it with request paths.
+ */
 export const API_BASE = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_BASE_URL ?? "");
 
 export function apiUrl(path) {

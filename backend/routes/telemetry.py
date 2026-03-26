@@ -1,7 +1,12 @@
-# Telemetry ingest and export endpoints.
-# Validates and stores gameplay events.
-# routes/telemetry.py
-# Routes for ingesting, validating, and exporting telemetry events
+"""
+Telemetry routes (ingest, list, export).
+
+These endpoints are the "backend landing point" for gameplay events sent by the
+frontend. The goals are:
+- store every event (even if it looks a bit wrong)
+- run lightweight validation and anomaly detection
+- give the dashboard a way to list/export events for analysis/marking
+"""
 
 from __future__ import annotations
 
@@ -19,32 +24,33 @@ from models import EventType
 from utils.auth import require_dashboard, require_designer
 from utils.errors import error_response
 
-# Blueprint for telemetry-related endpoints
+# Blueprint for telemetry-related endpoints (keeps URLs grouped + easy to register).
 bp = Blueprint("telemetry", __name__)
 
 
-# Ingest a single telemetry event.
 @bp.post("/api/events")
 def ingest_event():
-    # Ingest a single telemetry event from the frontend
+    """Ingest one telemetry event and store it.
+
+    We respond with `is_valid` + a simplified anomaly list so the client can
+    debug or display a warning, but we still store the raw event either way.
+    """
 
     body = request.get_json() or {}
-    # Generate an event_id if missing.
-
-    # Ensure each event has a unique ID
+    # Ensure each event has a unique ID (frontend can generate one too).
     if not body.get("event_id"):
         body["event_id"] = str(uuid.uuid4())
 
-    # Validate event structure and payload
-    # Any issues will be recorded as anomalies.
+    # Validate shape/payload and collect anomalies (we treat anomalies as data).
     validation = validate_event(body)
 
-    # Normalise payload to a dictionary
+    # Normalise payload so we always store a JSON object in the DB.
     payload = body.get("payload") or {}
     if not isinstance(payload, dict):
         payload = {}
 
-    # Check for impossible sequences (e.g. stage complete without stage start)
+    # Quick temporal check: you shouldn’t be able to complete/fail a stage
+    # without first recording a `stage_start` for that session + stage.
     event_type = body.get("event_type")
     if event_type in (EventType.STAGE_COMPLETE.value, EventType.STAGE_FAIL.value):
         with get_connection() as conn:
@@ -58,6 +64,7 @@ def ingest_event():
             ).fetchone()
 
         if start_row is None:
+            # If the sequence is impossible, we flag it but still store the event.
             validation["anomalies"].append(
                 {
                     "anomaly_id": f"{body['event_id']}_missing_stage_start",
@@ -71,7 +78,7 @@ def ingest_event():
             )
             validation["is_valid"] = False
 
-    # Store the event and any detected anomalies
+    # Store the event row and then store each anomaly row (if any).
     with get_connection() as conn:
         conn.execute(
             """
@@ -110,8 +117,8 @@ def ingest_event():
                 ),
             )
 
-    # Return validation result to the frontend
-    # Keep anomaly details minimal for the client.
+    # Return validation result to the frontend.
+    # We keep anomaly details minimal here to avoid leaking internal DB structure.
     response_anomalies = []
     for anomaly in validation["anomalies"]:
         detail = anomaly.get("details", {}).get("field") or anomaly.get("details")
@@ -129,10 +136,9 @@ def ingest_event():
     }, 201
 
 
-# List telemetry events (designer or viewer).
 @bp.get("/api/events")
 def list_events():
-    # Dashboard endpoint to query raw telemetry events (read-only for viewer)
+    """List stored telemetry events for the dashboard (designer/viewer only)."""
     auth_error = require_dashboard()
     if auth_error:
         return auth_error
@@ -141,7 +147,7 @@ def list_events():
     query = "SELECT * FROM events WHERE 1=1"
     params = []
 
-    # Apply optional filters (config, stage, session, user, event type)
+    # Apply optional filters (kept very simple: IN (...) clauses).
     for key in ("config_id", "stage_id", "event_type", "session_id", "user_id"):
         values = request.args.getlist(key)
         if values:
@@ -158,6 +164,7 @@ def list_events():
             try:
                 payload = json.loads(row["payload"])
             except json.JSONDecodeError:
+                # If something corrupted the stored JSON, we fail "soft" and show empty payload.
                 payload = {}
 
         events.append(
@@ -177,10 +184,9 @@ def list_events():
     return {"filters": filters, "events": events}
 
 
-# Export telemetry events as CSV.
 @bp.get("/api/export/events.csv")
 def export_events():
-    # Designer-only CSV export of telemetry events
+    """Export events as a CSV file (designer-only)."""
 
     auth_error = require_designer()
     if auth_error:
@@ -200,7 +206,7 @@ def export_events():
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # CSV header
+    # CSV header row (columns are stable so spreadsheets/scripts can rely on them).
     writer.writerow(
         [
             "event_id",

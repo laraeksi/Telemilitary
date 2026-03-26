@@ -1,7 +1,10 @@
-# Session start/end and summaries.
-# Tracks high-level session lifecycle.
-# routes/sessions.py
-# Routes for starting/ending a game session and generating a session summary
+"""
+Session lifecycle routes (identify, start, end, summary).
+
+In this project, a "session" is one run of the game for a particular user and
+chosen difficulty config. We store session metadata in SQLite and use telemetry
+events to compute a summary for the dashboard.
+"""
 
 from __future__ import annotations
 
@@ -15,30 +18,32 @@ from data.db import get_connection
 from models import ConfigId, EventType
 from utils.errors import error_response
 
-# Blueprint for session-related endpoints
+# Blueprint for session-related endpoints (keeps session URLs grouped together).
 bp = Blueprint("sessions", __name__)
 
 
-# Identify or create a pseudonymous user id.
 @bp.post("/api/player/identify")
 def identify_player():
-    # Creates/returns a pseudonymous user_id (frontend can provide one, or backend generates)
+    """Return a pseudonymous `user_id` for a player.
+
+    Players don’t "register" in this project; we just need an ID to link
+    sessions/events together.
+    """
     body = request.get_json() or {}
-    # Prefer client-provided id when present.
+    # Prefer a client-provided id (useful if the browser already stored one).
     user_id = body.get("client_user_id") or f"u_{uuid.uuid4().hex[:8]}"
     return {"user_id": user_id}
 
 
-# Start a new session.
 @bp.post("/api/sessions/start")
 def start_session():
-    # Starts a new session (one run through the 10 stages) for a user + chosen config (easy/balanced/hard)
+    """Start a new session for a given user + config (easy/balanced/hard)."""
     body = request.get_json() or {}
     # Pull required identifiers from payload.
     user_id = body.get("user_id")
     config_id = body.get("config_id")
 
-    # Basic input validation
+    # Basic input validation (kept simple and explicit for marking).
     if not user_id:
         return error_response("user_id is required", details={"field": "user_id"})
     if config_id not in [c.value for c in ConfigId]:
@@ -47,7 +52,7 @@ def start_session():
     session_id = str(uuid.uuid4())
     started_at = body.get("started_at") or datetime.utcnow().isoformat() + "Z"
 
-    # Store the session start in the database
+    # Store the session start in the database (session row is separate from telemetry rows).
     with get_connection() as conn:
         conn.execute(
             """
@@ -66,10 +71,9 @@ def start_session():
     }, 201
 
 
-# End an existing session.
 @bp.post("/api/sessions/end")
 def end_session():
-    # Marks a session as finished (completed/quit/failed) and stores end time + outcome
+    """Mark a session as finished and store its final outcome."""
     body = request.get_json() or {}
     # Required fields for update.
     session_id = body.get("session_id")
@@ -94,11 +98,13 @@ def end_session():
     return {"ok": True}
 
 
-# Build a summary for a session.
 @bp.get("/api/sessions/<session_id>/summary")
 def session_summary(session_id: str):
-    # Computes a per-stage and overall summary for a session using stored telemetry events
-    # (used by the dashboard/debugging)
+    """Compute a per-stage + overall summary from stored telemetry events.
+
+    This is mainly for the dashboard/debugging: it turns a raw event stream into
+    numbers like retries, token totals, time per stage, etc.
+    """
     with get_connection() as conn:
         session = conn.execute(
             "SELECT * FROM sessions WHERE session_id = ?",
@@ -118,11 +124,11 @@ def session_summary(session_id: str):
     total_tokens_spent = 0
     fails_by_reason = {"time": 0, "moves": 0}
 
-    # Iterate through all events and aggregate useful stats per stage
+    # Iterate through all events and aggregate useful stats per stage.
     for row in events:
         stage_id = row["stage_id"]
 
-        # Parse payload JSON stored in DB
+        # Parse payload JSON stored in DB (fail soft if it’s corrupted).
         payload = {}
         if row["payload"]:
             try:
@@ -148,16 +154,16 @@ def session_summary(session_id: str):
             },
         )
 
-        # Track stage start time (to compute time spent later)
+        # Track stage start time (to compute time spent later).
         if row["event_type"] == EventType.STAGE_START.value:
             per_stage[stage_id]["start_time"] = row["timestamp"]
 
-        # Track retry counts
+        # Track retry counts.
         if row["event_type"] == EventType.RETRY.value:
             per_stage[stage_id]["retries"] += 1
             total_retries += 1
 
-        # Track tokens earned/spent (resource events)
+        # Track tokens earned/spent (resource events).
         if row["event_type"] == EventType.RESOURCE_GAIN.value:
             amount = payload.get("amount")
             if isinstance(amount, (int, float)):
@@ -170,7 +176,7 @@ def session_summary(session_id: str):
                 per_stage[stage_id]["tokens_spent"] += amount
                 total_tokens_spent += amount
 
-        # Stage end events determine outcome + allow time spent calculation
+        # Stage end events determine outcome + allow time spent calculation.
         if row["event_type"] in (
             EventType.STAGE_COMPLETE.value,
             EventType.STAGE_FAIL.value,
@@ -195,7 +201,7 @@ def session_summary(session_id: str):
             elif row["event_type"] == EventType.QUIT.value:
                 per_stage[stage_id]["outcome"] = "quit"
 
-            # Allow stage-end events to also carry token totals, if present
+            # Some clients may send totals on end events; we accept them as fallback.
             if per_stage[stage_id]["tokens_earned"] == 0 and isinstance(payload.get("tokens_earned"), (int, float)):
                 per_stage[stage_id]["tokens_earned"] = payload.get("tokens_earned")
                 total_tokens_earned += payload.get("tokens_earned")
@@ -204,17 +210,17 @@ def session_summary(session_id: str):
                 per_stage[stage_id]["tokens_spent"] = payload.get("tokens_spent")
                 total_tokens_spent += payload.get("tokens_spent")
 
-    # Count how many stages were completed
+    # Count how many stages were completed.
     stages_completed = len([s for s in per_stage.values() if s["outcome"] == "completed"])
 
-    # Compute total session time if start and end times exist
+    # Compute total session time if start and end times exist.
     total_time_seconds = None
     if session["start_time"] and session["end_time"]:
         start_dt = datetime.fromisoformat(session["start_time"].replace("Z", "+00:00"))
         end_dt = datetime.fromisoformat(session["end_time"].replace("Z", "+00:00"))
         total_time_seconds = (end_dt - start_dt).total_seconds()
 
-    # Return a dashboard-friendly summary object
+    # Return a dashboard-friendly summary object (stable keys for the UI/tests).
     return {
         "session_id": session_id,
         "config_id": session["config_id"],

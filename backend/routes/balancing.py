@@ -1,7 +1,10 @@
-# Designer-only balancing endpoints.
-# Provides suggestions and simulations.
-# routes/balancing.py
-# Routes used by designers to analyse and adjust game balance
+"""
+Balancing (tuning) routes for the designer dashboard.
+
+These endpoints are "read-mostly": they compute suggestions/simulations and
+return editable parameter views. The actual stored config is still managed via
+the config endpoints — this file focuses on analysis.
+"""
 
 from __future__ import annotations
 
@@ -33,16 +36,13 @@ def _helper_costs_for_editor(stage: dict) -> dict:
     }
 
 
-# Blueprint for balancing and tuning endpoints (designer-only)
+# Blueprint for balancing and tuning endpoints (designer-only).
 bp = Blueprint("balancing", __name__)
 
 
-# Return balancing suggestions for a config.
 @bp.post("/api/balancing/suggestions")
 def suggestions():
-    # Returns rule-based balancing suggestions for a given config
-    # Uses aggregated telemetry data (fail rates, time, etc.)
-    # Designer role required for access.
+    """Return rule-based balancing suggestions for a given config."""
     auth_error = require_dashboard()
     if auth_error:
         return auth_error
@@ -56,12 +56,9 @@ def suggestions():
     return get_suggestions(config_id)
 
 
-# Simulate balance changes for a config.
 @bp.post("/api/balancing/simulate")
 def simulate():
-    # Runs a lightweight simulation to estimate the impact of parameter changes
-    # Does not modify stored configs
-    # This is read-only.
+    """Simulate the impact of parameter changes (does not write to DB)."""
     auth_error = require_dashboard()
     if auth_error:
         return auth_error
@@ -75,12 +72,9 @@ def simulate():
     return simulate_balance_change(payload)
 
 
-# Return editable balancing parameters.
 @bp.get("/api/balancing/parameters")
 def balancing_parameters():
-    # Returns all editable balancing parameters for a config
-    # Used to populate the designer parameter editor UI
-    # Designer-only access.
+    """Return all editable balancing parameters for a config (dashboard UI)."""
     auth_error = require_dashboard()
     if auth_error:
         return auth_error
@@ -91,7 +85,7 @@ def balancing_parameters():
     if not config:
         return error_response("config_id is invalid", details={"field": "config_id"})
 
-    # Fetch token reward rules per stage
+    # Fetch token reward rules per stage (stored separately so they can be tuned).
     with get_connection() as conn:
         token_rows = conn.execute(
             "SELECT stage_id, per_match, on_complete FROM token_rules WHERE config_id = ?",
@@ -106,7 +100,7 @@ def balancing_parameters():
         for row in token_rows
     }
 
-    # Build a simplified, editable view of stage parameters
+    # Build a simplified, editable view of stage parameters (safe to send to UI).
     editable = {
         "stages": [
             {

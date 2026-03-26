@@ -1,5 +1,9 @@
-// Home menu plus telemetry consent dialog.
-// Prompts for telemetry consent before play.
+/**
+ * Home menu page + telemetry consent.
+ *
+ * The game is playable either way, but we only send telemetry if the player opts in.
+ * This page is where we ask for consent and store the decision for future visits.
+ */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Modal from "../components/Modal";
@@ -27,6 +31,8 @@ function Menu() {
 
   useEffect(() => {
     if (!maintainerOpen) return;
+    // When the maintainer panel opens, we ping the backend health endpoint.
+    // This is just a quick "is the API running?" check for demos.
     let cancelled = false;
     fetch(apiUrl("/api/health"))
       .then((res) => res.json())

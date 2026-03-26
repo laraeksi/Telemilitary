@@ -1,5 +1,9 @@
-// This page handles designer registration and basic validation.
-// Validates password rules before sending to the API.
+/**
+ * Designer registration page.
+ *
+ * We validate password rules on the client for fast feedback, but the backend
+ * also re-validates (never trust only frontend validation).
+ */
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { apiUrl } from "../api/base";
@@ -48,6 +52,7 @@ function Registration(){
     }
     
     try {
+      // Send registration to the backend (stored in SQLite as a designer account).
       const res = await fetch(apiUrl("/api/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },

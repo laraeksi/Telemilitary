@@ -1,3 +1,11 @@
+"""
+Build a small "legacy compare" SQLite database for quick checks.
+
+This script generates `backend/data/game_legacy_compare.db` from the current
+schema and then seeds it using the legacy telemetry seeder. It’s mainly used to
+compare what the dashboard/queries look like with different seed datasets.
+"""
+
 import sqlite3
 import sys
 from pathlib import Path
@@ -15,15 +23,18 @@ SCHEMA_PATH = ROOT / "data" / "schema.sql"
 
 def main():
     if DB_PATH.exists():
+        # Start clean so results are reproducible.
         DB_PATH.unlink()
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     try:
+        # Apply schema then seed baseline configs + telemetry.
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         _seed_configs(conn)
         seed_telemetry_if_empty(conn)
         conn.commit()
+        # Print quick row counts as a sanity check.
         counts = {
             "events": conn.execute("SELECT COUNT(*) FROM events").fetchone()[0],
             "sessions": conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0],

@@ -1,5 +1,9 @@
-// Simple modal wrapper with inline styles.
-// Used for win/lose, consent, maintainer ops.
+/**
+ * Simple modal wrapper.
+ *
+ * Used for win/lose dialogs, telemetry consent, and maintainer/ops info.
+ * We keep it minimal on purpose: just a scrim + centered panel.
+ */
 function Modal({ title, children, className = "", zIndex = 50 }) {
   return (
     <div

@@ -1,5 +1,10 @@
-// Adds basic keyboard navigation for cards.
-// Tracks a focused index for arrow keys.
+/**
+ * Keyboard navigation helper (experimental).
+ *
+ * This is an optional component that can provide arrow-key navigation across a
+ * list of "card-like" items. The main `Card` component already supports Enter/Space,
+ * so this is mostly here as a scaffold for extended accessibility work.
+ */
 import { useEffect, useState } from "react";
 
 function KeyboardNav({ cards, onFlip }) {
@@ -8,6 +13,7 @@ function KeyboardNav({ cards, onFlip }) {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // This listens globally, so we keep logic small and predictable.
       // Move focus right.
       if (event.key === "ArrowRight") {
         setFocusedIndex((i) => Math.min(i + 1, cards.length - 1));

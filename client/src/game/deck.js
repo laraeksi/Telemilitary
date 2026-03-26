@@ -1,9 +1,13 @@
-// Deck builder and shuffle helper.
-// Produces a shuffled pair deck.
-// src/game/deck.js
+/**
+ * Deck builder + shuffle helper.
+ *
+ * The memory game needs a deck where every card appears exactly twice (pairs).
+ * `buildDeck()` takes a board size (rows/cols), chooses enough unique images,
+ * duplicates them into pairs, and shuffles the result.
+ */
 
 function shuffle(array) {
-  // Fisher-Yates shuffle.
+  // Fisher–Yates shuffle (good, unbiased shuffle for arrays).
   const a = [...array];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -12,8 +16,7 @@ function shuffle(array) {
   return a;
 }
 
-/* Card images
- */
+// Card image catalogue used to build decks.
 export const CARD_IMAGES = [
   { id: "cat", img: "/cards/cat.png" },
   { id: "dog", img: "/cards/dog.png" },
@@ -50,17 +53,19 @@ export function buildDeck({ rows, cols }) {
     );
   }
 
-  // Shuffle the art pool first so large boards stay unique but runs still feel varied.
+  // Shuffle the art pool first so runs feel different even with the same board size.
   const chosen = shuffle(CARD_IMAGES).slice(0, pairsNeeded);
 
-  // Duplicate each chosen card to create pairs
+  // Duplicate each chosen card to create pairs.
   const rawDeck = chosen
     .flatMap((c) => [c, c])
     .map((c, index) => ({
-      uid: `${c.id}-${index}-${crypto.randomUUID()}`, // unique even if ids repeat
+      // `uid` is unique per card instance (even though `id` repeats for pairs).
+      uid: `${c.id}-${index}-${crypto.randomUUID()}`,
       id: c.id,
       img: c.img,
     }));
 
+  // Final shuffle so the pair positions are random.
   return shuffle(rawDeck);
 }

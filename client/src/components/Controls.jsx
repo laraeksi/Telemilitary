@@ -1,9 +1,16 @@
-// Action buttons for in-game power-ups.
-// Disables buttons when tokens are low.
+/**
+ * Control panel for power-ups + session actions.
+ *
+ * This component is UI-only: it doesn’t decide game rules, it just calls the
+ * callbacks passed down from `Game.jsx`.
+ *
+ * The buttons are disabled when the player can’t afford the power-up.
+ */
 import { playClick } from "../audio/sounds";
 
 function Controls({ onPeek, onFreeze, onUndo, onRetry, onQuit, costs, tokens }) {
   const withClick = (fn) => () => {
+    // Keep button presses feeling responsive even if the next action is async.
     playClick();
     fn?.();
   };

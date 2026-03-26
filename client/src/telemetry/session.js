@@ -1,5 +1,7 @@
-// Placeholder for telemetry session helpers.
-// Intentionally left empty for now.
-// Session helpers will live here later.
-// Keeping the file ensures stable import paths.
-// Intentionally left minimal in this sprint.
+/**
+ * Telemetry session helpers (placeholder).
+ *
+ * The telemetry folder originally planned a separate module to manage session/run IDs.
+ * The app currently uses `telemetry/events.js` for session handling, but this file
+ * stays here so import paths remain stable if we refactor later.
+ */

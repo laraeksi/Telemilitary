@@ -1,6 +1,14 @@
-// High-level telemetry event helpers.
-// Orchestrates session start/end and events.
-// src/telemetry/events.js
+/**
+ * High-level telemetry helpers.
+ *
+ * This wraps the low-level sender so the game can just call:
+ * - `startSession(configId)`
+ * - `trackEvent(type, payload)`
+ * - `endSession(outcome)`
+ *
+ * It also centralises consent checks so we don’t accidentally send telemetry when the
+ * player hasn’t opted in.
+ */
 import { apiUrl } from "../api/base";
 import { emitEvent, getOrCreateId, nowIso } from "./client";
 
@@ -26,6 +34,7 @@ async function ensureUserId() {
   if (userId) return userId;
   const localId = getOrCreateId(USER_KEY, "u");
   // Try to let the backend assign a canonical user id.
+  // If the backend is down, we still keep working with a local id.
   try {
     const res = await fetch(apiUrl("/api/player/identify"), {
       method: "POST",
@@ -53,6 +62,7 @@ export async function startSession(config) {
   const startedAt = nowIso();
 
   try {
+    // Ask backend to create a session row (so dashboard can query sessions cleanly).
     const res = await fetch(apiUrl("/api/sessions/start"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -68,10 +78,11 @@ export async function startSession(config) {
   }
 
   if (!sessionId) {
-    // Fallback to a local session id.
+    // Fallback to a local session id (keeps telemetry linkable even offline).
     sessionId = getOrCreateId(SESSION_KEY, "s");
   }
 
+  // Record a session_start event in the telemetry stream too (separate from sessions table).
   await trackEvent("session_start", {
     stageId: 1,
     started_at: startedAt,
@@ -88,6 +99,7 @@ export async function endSession(outcome, stageId) {
 
   if (currentSessionId && currentUserId && currentConfig) {
     try {
+      // Best-effort: update sessions table. If it fails, we still record telemetry below.
       await fetch(apiUrl("/api/sessions/end"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -102,6 +114,7 @@ export async function endSession(outcome, stageId) {
     }
   }
 
+  // Always send a session_end event (this is what the telemetry validator expects too).
   await trackEvent("session_end", {
     stageId: stageId || 1,
     ended_at: endedAt,
@@ -112,12 +125,13 @@ export async function endSession(outcome, stageId) {
 export async function trackEvent(eventType, payload = {}) {
   if (!hasConsent()) return { skipped: true };
   const currentUserId = await ensureUserId();
-  // Pull session/config from memory or localStorage.
+  // Pull session/config from memory or localStorage (so calls still work after refresh).
   const currentSessionId = sessionId || localStorage.getItem(SESSION_KEY) || getOrCreateId(SESSION_KEY, "s");
   const currentConfig = configId || localStorage.getItem(CONFIG_KEY) || "balanced";
   const stageId = payload.stageId ?? 1;
   const { stageId: _ignored, ...eventPayload } = payload;
 
+  // Backend expects snake_case keys here (matches SQLite column names and validators).
   return emitEvent({
     timestamp: nowIso(),
     event_type: eventType,

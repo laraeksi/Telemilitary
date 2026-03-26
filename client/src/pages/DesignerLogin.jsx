@@ -1,5 +1,12 @@
-// This page shows the designer login form and calls the API.
-// Uses local state and calls /api/auth/login.
+/**
+ * Designer login page.
+ *
+ * The dashboard side of the app needs a "designer vs viewer" separation.
+ * Designers can write/save changes; viewers can only read the dashboard.
+ *
+ * This page authenticates designers via the backend `/api/auth/login` endpoint,
+ * and stores the chosen dashboard role in `sessionStorage`.
+ */
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { apiUrl } from "../api/base";
@@ -16,7 +23,7 @@ function DesignerLogin() {
     // Clear any previous error state.
     setError("");
 
-    // Quick local fallback for the demo account.
+    // Quick local fallback for the demo account (useful if backend is down in a demo).
     const TEST_USERNAME = "designer";
     const TEST_PASSWORD = "1234";
 

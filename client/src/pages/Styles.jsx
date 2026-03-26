@@ -1,3 +1,11 @@
+/**
+ * Standalone "Style Shop" page.
+ *
+ * This is the same idea as the in-game style modal, just as a separate route.
+ * It reads/writes theme + unlocks + token bank from localStorage.
+ *
+ * Cosmetic-only: themes do not affect difficulty or scoring.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 

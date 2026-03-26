@@ -1,5 +1,11 @@
-// Designer dashboard with charts and controls.
-// Fetches metrics and renders charts from API data.
+/**
+ * Designer dashboard page.
+ *
+ * This page is the "front-end view" of the analytics side of the assignment:
+ * it fetches aggregated metrics from the Flask API and renders them as simple
+ * charts/tables. It also includes tuning tools like suggestions, simulation,
+ * parameter editing, and decision notes.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiUrl } from "../api/base";
@@ -9,6 +15,7 @@ const CONFIGS = ["easy", "balanced", "hard"];
 const DASHBOARD_ROLE_KEY = "dashboard_role";
 
 function getDashboardRole() {
+  // Stored in sessionStorage so it resets when the browser tab closes.
   return sessionStorage.getItem(DASHBOARD_ROLE_KEY) || "designer";
 }
 
@@ -16,6 +23,7 @@ async function fetchJson(url, options = {}) {
   const role = getDashboardRole();
   const headers = {
     "Content-Type": "application/json",
+    // Backend RBAC is header-based in this project (designer vs viewer).
     "X-Role": role,
     ...(options.headers || {}),
   };
@@ -41,6 +49,7 @@ async function fetchJson(url, options = {}) {
 }
 
 function DataBlock({ title, children }) {
+  // Small UI wrapper so the page stays readable (one "block" per section).
   return (
     <section style={{ border: "1px solid #ddd", padding: 16, borderRadius: 8 }}>
       <h3 style={{ marginTop: 0 }}>{title}</h3>
@@ -490,6 +499,7 @@ function Dashboard() {
     setError("");
     setIsLoading(true);
     try {
+      // These are independent API calls, so we run them in parallel.
       const [funnelData, stageData, progressionData, fairnessData, compareData] =
         await Promise.all([
           fetchJson(`/api/metrics/funnel?config_id=${selectedConfig}`),
@@ -596,6 +606,7 @@ function Dashboard() {
   async function exportCsv() {
     try {
       // Download events as CSV for analysis.
+      // This endpoint is designer-only on the backend, so we send X-Role explicitly.
       const res = await fetch(apiUrl(`/api/export/events.csv?config_id=${configId}`), {
         headers: { "X-Role": "designer" },
       });
@@ -629,7 +640,7 @@ function Dashboard() {
     }
   }, [editableStages, paramEditStageId]);
 
-// 2) Keep simStageId valid whenever stageOptions changes
+  // 2) Keep simStageId valid whenever stageOptions changes
 useEffect(() => {
   const current = Number(simStageId);
   if (!stageOptions.includes(current)) {

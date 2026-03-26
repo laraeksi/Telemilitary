@@ -1,6 +1,15 @@
+"""
+Backend Flask app entrypoint.
+
+This file uses a simple "app factory" pattern: `create_app()` builds the Flask
+instance, applies config/middleware, and registers the feature blueprints.
+
+I’m keeping the setup intentionally straightforward because this is a student
+project and it’s easier to mark/reason about when everything is wired in one
+place.
+"""
+
 from __future__ import annotations
-# Flask app factory and route registration.
-# Creates the Flask app and wires routes.
 
 from flask import Flask
 from flask_cors import CORS
@@ -18,19 +27,17 @@ from routes.decisions import bp as decisions_bp
 from routes.dev import bp as dev_bp
 
 
-# App factory for Flask.
 def create_app():
-    # Create and configure the Flask app.
+    """Create and configure the Flask application instance."""
     app = Flask(__name__)
     app.config.from_object(Config)
-    # Allow the dev client to call the API.
+    # For local development we allow the frontend to call `/api/*`.
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    # Ensure tables exist and seed default configs.
+    # Make sure the database/tables exist before any route tries to query them.
     init_db()
 
-    # Register route groups.
-    # Each blueprint maps to a feature area.
+    # Routes are split into blueprints so each feature stays in its own file.
     app.register_blueprint(auth_bp)
     app.register_blueprint(game_config_bp)
     app.register_blueprint(sessions_bp)
@@ -44,5 +51,5 @@ def create_app():
 
 
 if __name__ == "__main__":
-    # Run a dev server locally.
+    # Only runs when you execute `python app.py` directly (not when imported).
     create_app().run(debug=True)

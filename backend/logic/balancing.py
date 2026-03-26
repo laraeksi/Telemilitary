@@ -1,5 +1,13 @@
-# Suggests balancing changes and simulates effects.
-# Uses rules derived from telemetry stats.
+"""
+Balancing rules + simulation helpers.
+
+This module does two things:
+- generate rule-based suggestions from aggregated metrics (e.g., "time too tight")
+- simulate the expected impact of a change without actually modifying stored configs
+
+The simulation is intentionally "lightweight" — it’s not a full game model, but
+it gives designers a directional estimate for dashboard previews.
+"""
 import json
 from typing import Any, Dict, List
 
@@ -8,14 +16,13 @@ from logic.metrics import get_fairness_metrics, get_stage_stats
 from models import EventType
 
 
-# Clamp values to a given range.
 def _clamp(value: float, min_value: float = 0.0, max_value: float = 1.0) -> float:
-    # Keep values in [min, max].
+    """Clamp a numeric value to a closed interval."""
     return max(min_value, min(value, max_value))
 
 
-# Generate balancing suggestions from metrics.
 def get_suggestions(config_id: str):
+    """Generate balancing suggestions for a config based on telemetry-derived metrics."""
     stage_stats = get_stage_stats(config_id)["stats"]
     fairness = get_fairness_metrics("fast_vs_slow", config_id)["stages"]
     # Map fairness metrics by stage for quick lookup.
@@ -23,7 +30,7 @@ def get_suggestions(config_id: str):
     suggestions: List[Dict[str, Any]] = []
 
     for stage in stage_stats:
-        # Evaluate rule triggers per stage.
+        # Evaluate rule triggers per stage and append suggestions when thresholds are hit.
         stage_id = stage["stage_id"]
         fairness_gap = fairness_by_stage.get(stage_id, {}).get("fairness_gap", 0.0)
         dropoff = stage.get("dropoff_to_next")
@@ -109,8 +116,8 @@ def get_suggestions(config_id: str):
     return {"config_id": config_id, "suggestions": suggestions}
 
 
-# Sum helper cost deltas for validation.
 def _sum_cost_deltas(change: Dict[str, Any]) -> int:
+    """Sum helper-related cost deltas in a change payload (used as a sanity check)."""
     total = 0
     for key, value in change.items():
         if key.endswith("_cost_delta") or key.endswith("cost_delta"):
@@ -128,7 +135,7 @@ def _sum_cost_deltas(change: Dict[str, Any]) -> int:
 
 
 def _micro_nudge_completion(timer_delta: int, move_delta: int) -> float:
-    # Tiny extra bump so small easing changes still move the needle (positive deltas only).
+    """Tiny bump so small easing changes still show up (positive deltas only)."""
     n = 0.0
     if timer_delta > 0:
         n += timer_delta * 0.001
@@ -154,6 +161,7 @@ def _survival_fraction(base: int, delta: int) -> float:
 
 
 def _fetch_stage_limits(conn, config_id: str, stage_id: int):
+    """Fetch current stage limits from DB, with safe defaults if missing."""
     row = conn.execute(
         """
         SELECT timer_seconds, move_limit
@@ -218,8 +226,8 @@ def _adjust_quit_rate_from_limit_deltas(
     return c_new, f_new, q_new, pressure, ease
 
 
-# Simulate a balance change without mutating data.
 def simulate_balance_change(payload):
+    """Simulate balance changes for one config without mutating stored data."""
     config_id = payload.get("config_id", "balanced")
     changes = payload.get("changes") or []
 
@@ -294,7 +302,7 @@ def simulate_balance_change(payload):
         move_delta = int(change.get("move_limit_delta") or 0)
         _sum_cost_deltas(change)  # not factored into the simulation, only validated.
 
-        # Track converted fail sources using the original proportional model.
+        # Track converted fail sources using a simple proportional model.
         converted_from_time = 0
         converted_from_moves = 0
 
@@ -314,7 +322,7 @@ def simulate_balance_change(payload):
         adjusted_fails = max(0, fails - converted)
         adjusted_completes = completes + converted
 
-        # Negative timer/move: fewer clears survive (scale by effective budget vs base stage limits).
+        # Negative timer/move: fewer clears survive (scaled by effective budget vs base limits).
         if timer_delta < 0 or move_delta < 0:
             surv_t = _survival_fraction(base_timer, timer_delta)
             surv_m = _survival_fraction(base_moves, move_delta)

@@ -1,11 +1,15 @@
+"""
+Shared error response helper.
+
+Most routes return JSON. To keep the frontend and tests simple, we return errors
+in one consistent shape everywhere (same top-level keys, same `code` field, etc).
+"""
+
 from __future__ import annotations
-# Shared error response helper.
-# Standardizes error payloads.
 from typing import Any
 from flask import jsonify
 
 
-# Build a standard error response.
 def error_response(
     message: str,
     *,
@@ -13,9 +17,12 @@ def error_response(
     details: dict | None = None,
     status: int = 400,
 ):
-    # Returns a standard error payload and HTTP status code
-    # Used across routes for validation and permission errors
-    # Keeps response shape consistent for the UI.
+    """Return a consistent JSON error payload plus HTTP status code.
+
+    This is used for both "you sent a bad request" validation errors and
+    "you aren’t allowed" permission errors, so the client can handle them the
+    same way.
+    """
 
     # Consistent JSON shape for the client.
     msg = {

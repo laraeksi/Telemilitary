@@ -1,5 +1,9 @@
-// Heads-up display for game status numbers.
-// Shows difficulty, time, moves, and tokens.
+/**
+ * Heads-up display (HUD) for the current run.
+ *
+ * Shows the key numbers the player cares about while playing:
+ * stage, difficulty, remaining time, remaining moves, and token balance.
+ */
 function HUD({
   configId,
   stageId,
@@ -11,6 +15,7 @@ function HUD({
   freeHintCharges = 0,
   streakBonusTokens = 0,
 }) {
+  // When time is low (and not frozen), we highlight it to add urgency.
   const isLowTime = timeRemaining > 0 && timeRemaining <= 15 && !freezeActive;
   const streakProgress = Math.max(0, Math.min(5, streakCount));
   return (

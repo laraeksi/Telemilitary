@@ -1,7 +1,12 @@
-# Config endpoints for reading/updating game params.
-# Used by designers to tune difficulty.
-# routes/game_config.py
-# Designer-only routes for viewing and editing game configuration parameters
+"""
+Game configuration routes (read + edit).
+
+Configs represent difficulty presets (easy/balanced/hard) and include per-stage
+parameters like timers, move limits, helper costs, and token reward rules.
+
+The game frontend mainly uses the read endpoints, while the designer dashboard
+uses the write endpoints to tune balance.
+"""
 
 from __future__ import annotations
 
@@ -13,24 +18,19 @@ from utils.auth import require_designer
 from utils.configs import fetch_configs, get_config
 from utils.errors import error_response
 
-# Blueprint for game configuration / parameter editing
+# Blueprint for game configuration / parameter editing.
 bp = Blueprint("game_config", __name__)
 
 
-# List all configs and stages.
 @bp.get("/api/game/configs")
 def get_game_configs():
-    # Returns all game configs (easy / balanced / hard) with their stage parameters
-    # Used by the designer dashboard and sometimes the frontend
-    # Public read endpoint.
+    """Return all configs (easy/balanced/hard) with stage parameters (public read)."""
     return {"configs": fetch_configs()}
 
 
-# Get a single config by id.
 @bp.get("/api/game/configs/<config_id>")
 def get_single_config(config_id: str):
-    # Returns a single difficulty configuration (with all its stages) for the game frontend
-    # Used by the game to load parameters.
+    """Return one config by id (used by the game to load parameters)."""
     config = get_config(config_id)
     if not config:
         return error_response("config not found", status=404)
@@ -39,12 +39,9 @@ def get_single_config(config_id: str):
 
 
 
-# Update one stage in a config.
 @bp.put("/api/game/configs/<config_id>/stages/<int:stage_id>")
 def update_stage_config(config_id: str, stage_id: int):
-    # Updates parameters for a single stage in a given config
-    # Designer-only endpoint
-    # Validates config and stage id.
+    """Update parameters for a single stage (designer-only)."""
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -56,7 +53,7 @@ def update_stage_config(config_id: str, stage_id: int):
 
     payload = request.get_json() or {}
 
-    # Stage-level parameters
+    # Stage-level parameters (basic difficulty knobs).
     stage_fields = {
         "card_count": payload.get("card_count"),
         "timer_seconds": payload.get("timer_seconds"),
@@ -64,14 +61,14 @@ def update_stage_config(config_id: str, stage_id: int):
         "mismatch_penalty_seconds": payload.get("mismatch_penalty_seconds"),
     }
 
-    # Helper (power-up) costs
+    # Helper (power-up) costs (called helpers in the DB + API).
     helpers = payload.get("helpers") or {}
 
-    # Token reward rules
+    # Token reward rules (how players earn tokens).
     token_rules = payload.get("token_rules") or {}
 
     with get_connection() as conn:
-        # Ensure stage exists
+        # Ensure stage exists for this config (avoid silently creating wrong rows).
         existing = conn.execute(
             "SELECT 1 FROM stages WHERE config_id = ? AND stage_id = ?",
             (config_id, stage_id),
@@ -79,7 +76,7 @@ def update_stage_config(config_id: str, stage_id: int):
         if existing is None:
             return error_response("stage not found", code="NOT_FOUND", status=404)
 
-        # Update stage parameters
+        # Update stage parameters (COALESCE keeps old values if not provided).
         conn.execute(
             """
             UPDATE stages
@@ -99,7 +96,7 @@ def update_stage_config(config_id: str, stage_id: int):
             ),
         )
 
-        # Update helper costs if provided
+        # Update helper costs if provided (we map API field names to DB keys).
         helper_map = {
             "peek_cost": "peek",
             "freeze_cost": "freeze",
@@ -115,7 +112,7 @@ def update_stage_config(config_id: str, stage_id: int):
                     (helpers[key], config_id, stage_id, helper_key),
                 )
 
-        # Update token rules if provided
+        # Update token rules if provided.
         if "per_match" in token_rules or "on_complete" in token_rules:
             conn.execute(
                 """
@@ -132,7 +129,7 @@ def update_stage_config(config_id: str, stage_id: int):
                 ),
             )
 
-    # Return updated stage view
+    # Return updated stage view so the dashboard can update without re-fetching everything.
     updated = get_config(config_id)
     return {
         "ok": True,
@@ -145,11 +142,9 @@ def update_stage_config(config_id: str, stage_id: int):
     }
 
 
-# Bulk update multiple stages.
 @bp.put("/api/game/configs/<config_id>/stages")
 def bulk_update_stages(config_id: str):
-    # Bulk update multiple stages in a single request
-    # Useful for designer batch edits
+    """Bulk update multiple stages in one request (designer batch edits)."""
     auth_error = require_designer()
     if auth_error:
         return auth_error
@@ -254,11 +249,9 @@ def bulk_update_stages(config_id: str):
     }
 
 
-# Apply global deltas to a config.
 @bp.patch("/api/game/configs/<config_id>/apply")
 def apply_config_deltas(config_id: str):
-    # Applies the same parameter delta across all stages in a config
-    # Used by balancing rules (e.g. reduce timers globally)
+    """Apply the same parameter delta across all stages in a config (designer-only)."""
     auth_error = require_designer()
     if auth_error:
         return auth_error
