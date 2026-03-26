@@ -143,7 +143,7 @@ function Menu() {
         <Modal title="Maintainer & operations" zIndex={60}>
           <p style={{ fontSize: 14, lineHeight: 1.5 }}>
             Maintainers run <strong>deployments</strong>, the <strong>telemetry pipeline</strong> (Flask + SQLite),
-            and <strong>automated tests</strong>. This is not a login role — see the repository handover docs.
+            and <strong>automated tests</strong>. This is not a login role. See the repository handover docs.
           </p>
           <p style={{ marginTop: 12, fontSize: 14 }}>
             <strong>API health</strong>{" "}
@@ -155,7 +155,7 @@ function Menu() {
             )}
             {healthStatus === "error" && (
               <span style={{ color: "#a30" }} aria-live="polite">
-                Unreachable — start the backend (<code>python app.py</code> in <code>backend/</code>)
+                Unreachable. Start the backend (<code>python app.py</code> in <code>backend/</code>)
               </span>
             )}
           </p>

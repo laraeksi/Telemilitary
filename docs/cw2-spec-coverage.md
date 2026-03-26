@@ -24,4 +24,4 @@ Use this as a **traceability matrix** between the project brief and evidence in 
 ## Notes for markers
 
 - **Viewer vs Maintainer:** the app may use a **viewer** (read-only) mode on the dashboard; **Maintainer** is documented as deployment, tests, backups, and repository hygiene — consistent with coursework handover practice.
-- **PDFs:** Cursor/the repo supplies **Markdown sources**; final **PDF** submission is a **local export** step (Word/Pandoc/print-to-PDF).
+- **PDFs:** **Markdown sources** are in the repo; final **PDF** submission is a **local export** step (Word/Pandoc/print-to-PDF).

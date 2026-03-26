@@ -32,6 +32,10 @@ decisions.
 - `shared/` shared JSDoc types and configuration definitions
 - `docs/` supporting documentation and diagrams
 
+## Production
+
+**Live site:** [https://telemilitary-1.onrender.com/](https://telemilitary-1.onrender.com/)
+
 ## Local Development
 
 ### Backend (Flask)
@@ -71,6 +75,7 @@ From `backend/`:
 - Dev API base is proxied; production builds can set:
   - PowerShell: `$env:VITE_API_BASE_URL="https://api.example.com"; npm run build`
   - Bash: `VITE_API_BASE_URL=https://api.example.com npm run build`
+- The deployed client is at [telemilitary-1.onrender.com](https://telemilitary-1.onrender.com/); point `VITE_API_BASE_URL` at your hosted API when building for that environment.
 
 ## CW2 submission documentation (spec traceability)
 

@@ -53,6 +53,28 @@ const formatPercent = (value) => `${(value * 100).toFixed(1)}%`;
 const formatSeconds = (value) => `${value.toFixed(1)}s`;
 const formatTokens = (value) => `${value.toFixed(1)} tokens`;
 
+/** Human-readable line for balancing rules; paired with API `expected_effect` fallback in Quick Takeaways. */
+const SUGGESTION_COPY = {
+  R3_HELPERS_UNAFFORDABLE: "Helpers seem a bit too expensive for what players earn.",
+  R4_HELPERS_OVERUSED: "Players are relying on helpers a lot.",
+  R5_FAIRNESS_VIOLATION: "Different player groups are getting noticeably different outcomes.",
+  R6_PROGRESSION_DROPOFF: "A lot of players seem to drop off before the next stage.",
+};
+
+function groupSuggestionsByMessage(suggestions) {
+  const groups = new Map();
+  for (const item of suggestions) {
+    const text =
+      SUGGESTION_COPY[item.rule_id] || item.expected_effect || "Worth a second look.";
+    if (!groups.has(text)) groups.set(text, []);
+    groups.get(text).push(item.stage_id);
+  }
+  return Array.from(groups.entries()).map(([text, ids]) => ({
+    text,
+    stageIds: [...new Set(ids)].sort((a, b) => a - b),
+  }));
+}
+
 function decisionChangeLabel(ch) {
   if (!ch || typeof ch !== "object") return "Update recorded";
   if (typeof ch.summary === "string" && ch.summary.trim()) return ch.summary.trim();
@@ -221,7 +243,7 @@ function LineChart({ data, height = 180, color = "#37b24d", valueFormatter, yDom
   );
 }
 
-/** Easy vs hard completion rates on the same scale (0–100%). Shows separation; gap bars show the difference. */
+/** Easy vs hard completion rates on the same scale (0-100%). Shows separation; gap bars show the difference. */
 function CompareDifficultyLines({ stages }) {
   if (!stages?.length) return <p>No comparison data yet.</p>;
   const padding = 36;
@@ -253,10 +275,10 @@ function CompareDifficultyLines({ stages }) {
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: "flex", gap: 16, fontSize: 12, marginBottom: 8, alignItems: "center" }}>
         <span>
-          <span style={{ color: "#2f9e44", fontWeight: 600 }}>—</span> Easy clear %
+          <span style={{ color: "#2f9e44", fontWeight: 600 }}>●</span> Easy clear %
         </span>
         <span>
-          <span style={{ color: "#c92a2a", fontWeight: 600 }}>—</span> Hard clear %
+          <span style={{ color: "#c92a2a", fontWeight: 600 }}>●</span> Hard clear %
         </span>
       </div>
       <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
@@ -330,7 +352,7 @@ function FunnelTable({ stages }) {
           const failPct = ((s.failure_rate || 0) * 100).toFixed(1);
           const dropPct =
             s.dropoff_to_next == null
-              ? "—"
+              ? "-"
               : `${((s.dropoff_to_next || 0) * 100).toFixed(1)}%`;
 
           return (
@@ -660,12 +682,7 @@ useEffect(() => {
         (stage.by_config?.hard?.completion_rate || 0),
     })) || [];
 
-  const suggestionCopy = {
-    R3_HELPERS_UNAFFORDABLE: "Helpers seem a bit too expensive for what players earn here.",
-    R4_HELPERS_OVERUSED: "Players are relying on helpers a lot on this stage.",
-    R5_FAIRNESS_VIOLATION: "Different player groups are getting noticeably different outcomes here.",
-    R6_PROGRESSION_DROPOFF: "This is a point where a lot of players seem to drop off.",
-  };
+  const groupedTakeaways = useMemo(() => groupSuggestionsByMessage(suggestions), [suggestions]);
 
   async function saveStageParameters(e) {
     e.preventDefault();
@@ -816,7 +833,7 @@ useEffect(() => {
         <DataBlock title="4) Net Tokens by Stage">
           <p style={{ fontSize: 12, opacity: 0.8, marginTop: 0 }}>
             Average <strong>resource_gain</strong> minus <strong>resource_spend</strong> on <strong>successful clears</strong>{" "}
-            only. Gains include per-match rewards plus the stage-completion bonus — later stages have more pairs, so totals
+            only. Gains include per-match rewards plus the stage-completion bonus; later stages have more pairs, so totals
             should grow; spending on helpers (especially on harder stages) creates dips.
           </p>
           <LineChart data={progressionTokens} color="#ff922b" valueFormatter={formatTokens} yDomainMin={0} />
@@ -834,8 +851,8 @@ useEffect(() => {
             Each rate is <strong>clears ÷ starts for that stage only</strong> (people who never reached stage 7 do not
             count toward stage 7). Easy and hard therefore measure <strong>different cohorts</strong> at late stages:
             hard mode players who still reach stage 9 are usually stronger, so their clear rate can stay high and the{" "}
-            <strong>easy−hard gap</strong> does not have to grow smoothly with stage number. The line chart shows both
-            difficulties on the same 0–100% scale; the bars show the gap (easy − hard) per stage.
+            <strong>easy-hard gap</strong> does not have to grow smoothly with stage number. The line chart shows both
+            difficulties on the same 0-100% scale; the bars show the gap (easy - hard) per stage.
           </p>
           <CompareDifficultyLines stages={compare?.stages} />
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 8, marginTop: 0 }}>
@@ -1085,15 +1102,16 @@ useEffect(() => {
             <p>Nothing stands out yet, but there may just not be enough data to call it confidently.</p>
           ) : (
             <ul>
-              {suggestions.map((item) => (
-                <li key={`${item.rule_id}-${item.stage_id}`}>
-                  Stage {item.stage_id}:{" "}
-                  {suggestionCopy[item.rule_id] || item.expected_effect || "Worth a second look."}
+              {groupedTakeaways.map(({ text, stageIds }) => (
+                <li key={`${text}-${stageIds.join(",")}`}>
+                  {stageIds.length === 1
+                    ? `Stage ${stageIds[0]}: `
+                    : `Stages ${stageIds.join(", ")}: `}
+                  {text}
                 </li>
               ))}
             </ul>
           )}
-          
         </DataBlock>
 
         <DataBlock title="Decision notes">

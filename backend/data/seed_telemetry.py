@@ -925,11 +925,26 @@ def insert_event(conn, event):
         )
 
 
+def _random_decision_timestamp(rng: random.Random, year: int, month: int, day_min: int, day_max: int) -> str:
+    """Wall-clock time for a designer note, biased toward work hours with occasional late edits."""
+    day = rng.randint(day_min, day_max)
+    if rng.random() < 0.85:
+        hour = rng.randint(9, 17)
+    elif rng.random() < 0.5:
+        hour = rng.randint(8, 8)
+    else:
+        hour = rng.randint(18, 20)
+    minute = rng.randint(0, 59)
+    second = rng.randint(0, 59)
+    return datetime(year, month, day, hour, minute, second).isoformat() + "Z"
+
+
 # Insert demo decision log entries.
 def seed_decisions(conn, base_time):
     """
     Seed >= 30 balancing decisions. Timestamps spread across days; evidence_links stored as JSON arrays.
     """
+    rng = random.Random(20260326)
     configs = [ConfigId.EASY.value, ConfigId.BALANCED.value, ConfigId.HARD.value]
     evidence_pool = [
         ["Funnel chart, stages 3 and 4"],
@@ -991,20 +1006,17 @@ def seed_decisions(conn, base_time):
 
         # Split across late Jan (stages 1 and 2 only), all of February, and March.
         if i < 8:
-            day = 25 + (i % 7)
             stage_id = 1 if i % 2 == 0 else 2
             ev = jan_evidence[i % len(jan_evidence)]
-            ts = datetime(2026, 1, day, 9 + (i % 7), (i * 13) % 60, (i * 7) % 60).isoformat() + "Z"
+            ts = _random_decision_timestamp(rng, 2026, 1, 25, 31)
         elif i < 21:
-            day = 1 + ((i - 8) % 28)
             stage_id = ((i - 8) % 10) + 1
             ev = evidence_pool[i % len(evidence_pool)]
-            ts = datetime(2026, 2, day, 9 + (i % 8), (i * 13) % 60, (i * 7) % 60).isoformat() + "Z"
+            ts = _random_decision_timestamp(rng, 2026, 2, 1, 28)
         else:
-            day = 1 + ((i - 21) % 31)
             stage_id = ((i - 21) % 10) + 1
             ev = evidence_pool[i % len(evidence_pool)]
-            ts = datetime(2026, 3, day, 9 + (i % 8), (i * 13) % 60, (i * 7) % 60).isoformat() + "Z"
+            ts = _random_decision_timestamp(rng, 2026, 3, 1, 31)
 
         decisions.append(
             (
